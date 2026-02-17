@@ -3,12 +3,9 @@ version = 1
 name = "New project"
 
 [setup]
-script = ""
+script = "./run.sh"
 
 [[actions]]
 name = "Run"
 icon = "run"
-command = '''
-cd "/Users/ossaiemmanuel/Documents/New project"
-python3 -m http.server 8000
-'''
+command = "./run.sh"

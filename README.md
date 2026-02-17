@@ -4,15 +4,14 @@ Classic Snake implemented with dependency-free HTML/CSS/JS.
 
 ## Run
 
-Start a static server from the repo root:
+From the repo root, run:
 
 ```bash
-python3 -m http.server 8000
+./run.sh
 ```
 
-Then open:
-
-`http://localhost:8000/index.html`
+This opens the game in your browser automatically.
+It uses `http://localhost:8000/index.html` when local ports are available, and falls back to opening `index.html` directly when the run sandbox blocks local ports.
 
 ## Test
 

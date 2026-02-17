@@ -9,6 +9,101 @@ body {
   color: #222;
 }
 
+.countdown-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.58);
+  z-index: 50;
+}
+
+.countdown-modal.hidden {
+  display: none;
+}
+
+.dialog-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 60;
+}
+
+.dialog-modal.hidden {
+  display: none;
+}
+
+.dialog-content {
+  width: min(380px, calc(100vw - 32px));
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  padding: 14px;
+}
+
+.dialog-content h2 {
+  margin: 0 0 8px;
+}
+
+.dialog-content p {
+  margin: 0 0 8px;
+}
+
+.dialog-content input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin: 6px 0 10px;
+}
+
+.avatar-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.avatar-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.avatar-btn.selected {
+  border-color: #1b5e20;
+  background: #e8f5e9;
+}
+
+.countdown-content {
+  min-width: 220px;
+  text-align: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  padding: 16px 24px;
+}
+
+.countdown-label {
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.countdown-value {
+  font-size: 96px;
+  line-height: 1;
+  font-weight: 700;
+}
+
 .container {
   max-width: 460px;
   margin: 0 auto;
@@ -48,6 +143,7 @@ button {
 }
 
 .cell {
+  position: relative;
   width: 24px;
   height: 24px;
   box-sizing: border-box;
@@ -63,7 +159,34 @@ button {
 }
 
 .cell.food {
-  background: #c62828;
+  background: #fff;
+}
+
+.cell.food::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: calc(100% * var(--food-scale, 0.7));
+  height: calc(100% * var(--food-scale, 0.7));
+  background: var(--food-color, #c62828);
+  border-radius: 50%;
+}
+
+.cell.food-small::after {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.cell.food-medium::after {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.cell.food-large::after {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.cell.obstacle {
+  background: #616161;
 }
 
 .touch-controls {
@@ -75,4 +198,18 @@ button {
 
 .touch-controls .empty {
   visibility: hidden;
+}
+
+.leaderboard {
+  margin-top: 12px;
+}
+
+.leaderboard h2 {
+  font-size: 16px;
+  margin: 0 0 6px;
+}
+
+.leaderboard ol {
+  margin: 0;
+  padding-left: 22px;
 }

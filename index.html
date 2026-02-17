@@ -7,10 +7,29 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <div id="countdown-modal" class="countdown-modal hidden" aria-live="polite" aria-label="Countdown">
+      <div class="countdown-content">
+        <div id="countdown-label" class="countdown-label">Ready</div>
+        <div id="countdown-value" class="countdown-value">3</div>
+      </div>
+    </div>
+    <div id="high-score-modal" class="dialog-modal hidden" aria-live="polite" aria-label="New high score">
+      <div class="dialog-content">
+        <h2>New High Score</h2>
+        <p id="high-score-modal-text">Enter your name</p>
+        <label for="high-score-name">Name</label>
+        <input id="high-score-name" type="text" maxlength="16" placeholder="Player" />
+        <div id="avatar-options" class="avatar-options" aria-label="Avatar options"></div>
+        <button id="save-high-score-btn" type="button">Save High Score</button>
+      </div>
+    </div>
     <main class="container">
       <h1>Snake</h1>
       <section class="panel">
-        <div>Score: <strong id="score">0</strong></div>
+        <div>
+          Score: <strong id="score">0</strong> |
+          High: <strong id="high-score">0</strong>
+        </div>
         <div class="actions">
           <button id="pause-btn" type="button">Pause</button>
           <button id="restart-btn" type="button">Restart</button>
@@ -27,6 +46,12 @@
         <button type="button" data-direction="right">Right</button>
       </section>
       <p>Controls: Arrow keys or WASD, P or Space to pause, R to restart.</p>
+      <p>Food: small yellow = 3, medium orange = 2, large red = 1.</p>
+      <p>Obstacle rule: every 30 points adds multiple gray obstacles; eating one shrinks the snake.</p>
+      <section class="leaderboard">
+        <h2>Leaderboard</h2>
+        <ol id="leaderboard-list"></ol>
+      </section>
     </main>
 
     <script src="./snake-logic.js"></script>
