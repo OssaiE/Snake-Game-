@@ -27,3 +27,14 @@ Original prompt: Build a classic Snake game in this repo.
 - Removed always-visible name input; new high-score name/avatar is collected in a modal only when a record is set.
 - Leaderboard entries now include avatar + name.
 - Added ready/set/go audio cues during countdown (tone + voice).
+- Added background music support during active gameplay with a Music On/Off toggle.
+- Music source path is `assets/mission-impossible-licensed.mp3` (user-provided licensed audio file).
+- Added start menu modal flow and switched background music to `assets/freepik-game-on.mp3`.
+- Music now plays louder in the start menu and automatically reduces volume after starting gameplay.
+- Updated music behavior to keep looping continuously across all states (including loss/game-over).
+- Rebalanced audio mix so SFX are louder than background music.
+- Updated page layout to a desktop split: game area 65%, leaderboard 35% (stacks on mobile).
+- Enabled explicit audio `autoplay` and retained autoplay retry logic for immediate background playback from load.
+- Renamed title to "Ossai Sama Snake" across page title and headings.
+- Added bundled SF Pro Rounded `@font-face` files from `assets/fonts` and switched app typography to that family.
+- Implemented score-based snake speed progression: starts slow and accelerates as score increases.

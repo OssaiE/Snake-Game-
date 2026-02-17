@@ -1,12 +1,14 @@
 (function () {
   "use strict";
 
-  var CELL_SIZE = 24;
-  var TICK_MS = 120;
+  var BASE_TICK_MS = 170;
+  var MIN_TICK_MS = 60;
   var gameRoot = document.getElementById("game");
   var scoreEl = document.getElementById("score");
   var highScoreEl = document.getElementById("high-score");
   var statusEl = document.getElementById("status");
+  var startMenuModalEl = document.getElementById("start-menu-modal");
+  var startGameBtn = document.getElementById("start-game-btn");
   var countdownModalEl = document.getElementById("countdown-modal");
   var countdownLabelEl = document.getElementById("countdown-label");
   var countdownValueEl = document.getElementById("countdown-value");
@@ -15,6 +17,8 @@
   var highScoreNameInput = document.getElementById("high-score-name");
   var avatarOptionsEl = document.getElementById("avatar-options");
   var saveHighScoreBtn = document.getElementById("save-high-score-btn");
+  var musicBtn = document.getElementById("music-btn");
+  var bgMusicEl = document.getElementById("bg-music");
   var leaderboardListEl = document.getElementById("leaderboard-list");
   var restartBtn = document.getElementById("restart-btn");
   var pauseBtn = document.getElementById("pause-btn");
@@ -23,24 +27,36 @@
   var state = SnakeLogic.createInitialState({ gridSize: 16 });
   var tickId = null;
   var countdownId = null;
+  var currentTickMs = BASE_TICK_MS;
   var audioCtx = null;
   var hasPlayedLoseSound = false;
   var hasRecordedScore = false;
+  var inMenu = true;
   var countdownSeconds = 0;
   var highScore = 0;
   var pendingHighScore = null;
+  var hasActivatedMusic = true;
+  var autoplayRetryId = null;
+  var musicEnabled = true;
   var selectedAvatar = "🐍";
+  var MENU_MUSIC_VOLUME = 0.12;
+  var GAME_MUSIC_VOLUME = 0.07;
+  var POP_SFX_GAIN = 0.32;
+  var LOSE_SFX_GAIN = 0.28;
+  var COUNTDOWN_SFX_GAIN = 0.26;
   var AVATARS = ["🐍", "🐸", "🐯", "🐼", "🦊", "🐙"];
   var PLAYER_PROFILE_KEY = "snake_player_profile_v1";
   var LEADERBOARD_KEY = "snake_leaderboard_v1";
+  var MUSIC_ENABLED_KEY = "snake_music_enabled_v1";
   var leaderboard = loadLeaderboard();
   var playerProfile = loadPlayerProfile();
+  musicEnabled = loadMusicEnabled();
   highScore = leaderboard.length > 0 ? leaderboard[0].score : 0;
   selectedAvatar = playerProfile.avatar;
 
   function buildGrid() {
-    gameRoot.style.gridTemplateColumns = "repeat(" + state.gridSize + ", " + CELL_SIZE + "px)";
-    gameRoot.style.gridTemplateRows = "repeat(" + state.gridSize + ", " + CELL_SIZE + "px)";
+    gameRoot.style.gridTemplateColumns = "repeat(" + state.gridSize + ", 1fr)";
+    gameRoot.style.gridTemplateRows = "repeat(" + state.gridSize + ", 1fr)";
     gameRoot.innerHTML = "";
 
     for (var y = 0; y < state.gridSize; y += 1) {
@@ -102,7 +118,9 @@
 
     scoreEl.textContent = String(state.score);
     if (highScoreEl) highScoreEl.textContent = String(Math.max(highScore, state.score));
-    if (isHighScoreModalOpen()) {
+    if (inMenu) {
+      statusEl.textContent = "Menu - press Start Game";
+    } else if (isHighScoreModalOpen()) {
       statusEl.textContent = "New high score. Save your name and avatar.";
     } else if (countdownSeconds > 0) {
       statusEl.textContent = "Get ready";
@@ -116,13 +134,17 @@
       statusEl.textContent = "Running";
     }
     pauseBtn.textContent = state.paused ? "Resume" : "Pause";
+    if (musicBtn) musicBtn.textContent = "Music: " + (musicEnabled ? "On" : "Off");
+    renderStartMenuModal();
     renderCountdownModal();
+    syncBackgroundMusic();
   }
 
   function tick() {
     var previousScore = state.score;
     var wasGameOver = state.gameOver;
     state = SnakeLogic.advance(state);
+    refreshSpeedFromScore();
     if (state.score > previousScore) playPop();
     if (!wasGameOver && state.gameOver && state.food !== null) playLoseJingle();
     if (!wasGameOver && state.gameOver) handleGameOver();
@@ -139,7 +161,7 @@
       countdownId = null;
     }
     if (tickId) clearInterval(tickId);
-    tickId = setInterval(tick, TICK_MS);
+    tickId = setInterval(tick, currentTickMs);
   }
 
   function startCountdown() {
@@ -168,7 +190,9 @@
 
   function restart() {
     closeHighScoreModal();
+    inMenu = false;
     state = SnakeLogic.createInitialState({ gridSize: 16 });
+    currentTickMs = getTickMsForScore(state.score);
     hasPlayedLoseSound = false;
     hasRecordedScore = false;
     buildGrid();
@@ -182,8 +206,55 @@
     render();
   }
 
+  function startFromMenu() {
+    inMenu = false;
+    restart();
+  }
+
   function isInputLocked() {
-    return countdownSeconds > 0 || isHighScoreModalOpen();
+    return inMenu || countdownSeconds > 0 || isHighScoreModalOpen();
+  }
+
+  function getTickMsForScore(score) {
+    var stepDown = Math.floor(score / 2) * 4;
+    return Math.max(MIN_TICK_MS, BASE_TICK_MS - stepDown);
+  }
+
+  function refreshSpeedFromScore() {
+    var nextTickMs = getTickMsForScore(state.score);
+    if (nextTickMs === currentTickMs) return;
+    currentTickMs = nextTickMs;
+    if (tickId) {
+      clearInterval(tickId);
+      tickId = setInterval(tick, currentTickMs);
+    }
+  }
+
+  function renderStartMenuModal() {
+    if (!startMenuModalEl) return;
+    if (inMenu) {
+      startMenuModalEl.classList.remove("hidden");
+    } else {
+      startMenuModalEl.classList.add("hidden");
+    }
+  }
+
+  function loadMusicEnabled() {
+    try {
+      var stored = window.localStorage.getItem(MUSIC_ENABLED_KEY);
+      if (stored === null) return true;
+      return stored === "1";
+    } catch (_err) {
+      return true;
+    }
+  }
+
+  function saveMusicEnabled(value) {
+    try {
+      window.localStorage.setItem(MUSIC_ENABLED_KEY, value ? "1" : "0");
+    } catch (_err) {
+      // Ignore storage failures.
+    }
   }
 
   function loadPlayerProfile() {
@@ -353,6 +424,76 @@
     closeHighScoreModal();
   }
 
+  function markUserInteraction() {
+    hasActivatedMusic = true;
+    syncBackgroundMusic();
+  }
+
+  function shouldPlayBackgroundMusic() {
+    return !!bgMusicEl && musicEnabled && hasActivatedMusic;
+  }
+
+  function targetMusicVolume() {
+    return inMenu ? MENU_MUSIC_VOLUME : GAME_MUSIC_VOLUME;
+  }
+
+  function syncBackgroundMusic() {
+    if (!bgMusicEl) return;
+    bgMusicEl.volume = targetMusicVolume();
+    if (shouldPlayBackgroundMusic()) {
+      var playPromise = bgMusicEl.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(function () {
+          startAutoplayRetry();
+        });
+      }
+      return;
+    }
+    if (!bgMusicEl.paused) bgMusicEl.pause();
+  }
+
+  function stopAutoplayRetry() {
+    if (autoplayRetryId) {
+      clearInterval(autoplayRetryId);
+      autoplayRetryId = null;
+    }
+  }
+
+  function startAutoplayRetry() {
+    if (!bgMusicEl || autoplayRetryId) return;
+    autoplayRetryId = setInterval(function () {
+      if (!shouldPlayBackgroundMusic()) {
+        stopAutoplayRetry();
+        return;
+      }
+      var playPromise = bgMusicEl.play();
+      if (playPromise && typeof playPromise.then === "function") {
+        playPromise.then(function () {
+          stopAutoplayRetry();
+        }).catch(function () {});
+      }
+    }, 1000);
+  }
+
+  function setupGlobalAudioUnlock() {
+    function unlock() {
+      markUserInteraction();
+      stopAutoplayRetry();
+      document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("keydown", unlock);
+      document.removeEventListener("touchstart", unlock);
+    }
+    document.addEventListener("pointerdown", unlock);
+    document.addEventListener("keydown", unlock);
+    document.addEventListener("touchstart", unlock);
+  }
+
+  function toggleMusic() {
+    musicEnabled = !musicEnabled;
+    saveMusicEnabled(musicEnabled);
+    render();
+  }
+
   function setupProfileModal() {
     if (!avatarOptionsEl) return;
     avatarOptionsEl.innerHTML = "";
@@ -370,16 +511,28 @@
     setSelectedAvatar(playerProfile.avatar);
 
     if (saveHighScoreBtn) {
-      saveHighScoreBtn.addEventListener("click", savePendingHighScore);
+      saveHighScoreBtn.addEventListener("click", function () {
+        markUserInteraction();
+        savePendingHighScore();
+      });
     }
     if (highScoreNameInput) {
       highScoreNameInput.addEventListener("keydown", function (event) {
         if (event.key === "Enter") {
           event.preventDefault();
+          markUserInteraction();
           savePendingHighScore();
         }
       });
     }
+  }
+
+  function setupMusicControls() {
+    if (!musicBtn) return;
+    musicBtn.addEventListener("click", function () {
+      markUserInteraction();
+      toggleMusic();
+    });
   }
 
   function primeAudio() {
@@ -407,7 +560,7 @@
     osc.frequency.setValueAtTime(420, now);
     osc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
     gain.gain.setValueAtTime(0.001, now);
-    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(POP_SFX_GAIN, now + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
     osc.connect(gain);
     gain.connect(audioCtx.destination);
@@ -434,7 +587,7 @@
       osc.type = "square";
       osc.frequency.setValueAtTime(notes[i], start);
       gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.12, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(LOSE_SFX_GAIN, start + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, end);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
@@ -461,7 +614,7 @@
     osc.type = "sine";
     osc.frequency.setValueAtTime(frequency, now);
     gain.gain.setValueAtTime(0.001, now);
-    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(COUNTDOWN_SFX_GAIN, now + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
     osc.connect(gain);
     gain.connect(audioCtx.destination);
@@ -480,8 +633,14 @@
   }
 
   function handleKeydown(event) {
+    markUserInteraction();
     primeAudio();
     var key = event.key.toLowerCase();
+    if (inMenu && key === "enter") {
+      event.preventDefault();
+      startFromMenu();
+      return;
+    }
     if (isInputLocked() && key !== "r") return;
     if (key === "arrowup" || key === "w") handleDirection("up");
     if (key === "arrowdown" || key === "s") handleDirection("down");
@@ -498,6 +657,7 @@
 
   controls.forEach(function (button) {
     button.addEventListener("click", function () {
+      markUserInteraction();
       primeAudio();
       if (isInputLocked()) return;
       handleDirection(button.dataset.direction);
@@ -505,13 +665,24 @@
   });
 
   pauseBtn.addEventListener("click", function () {
+    markUserInteraction();
     primeAudio();
     if (isInputLocked()) return;
     state = SnakeLogic.togglePause(state);
     render();
   });
 
-  restartBtn.addEventListener("click", restart);
+  if (startGameBtn) {
+    startGameBtn.addEventListener("click", function () {
+      markUserInteraction();
+      startFromMenu();
+    });
+  }
+
+  restartBtn.addEventListener("click", function () {
+    markUserInteraction();
+    restart();
+  });
   document.addEventListener("keydown", handleKeydown);
 
   window.render_game_to_text = function () {
@@ -527,6 +698,10 @@
       leaderboardTop: leaderboard.slice(0, 5),
       playerName: playerProfile.name,
       playerAvatar: playerProfile.avatar,
+      inMenu: inMenu,
+      musicEnabled: musicEnabled,
+      musicVolume: targetMusicVolume(),
+      tickMs: currentTickMs,
       countdownSeconds: countdownSeconds,
       awaitingHighScoreSave: pendingHighScore !== null,
       gameOver: state.gameOver,
@@ -536,7 +711,7 @@
 
   window.advanceTime = function (ms) {
     if (isInputLocked()) return;
-    var steps = Math.max(1, Math.round(ms / TICK_MS));
+    var steps = Math.max(1, Math.round(ms / currentTickMs));
     for (var i = 0; i < steps; i += 1) {
       var previousScore = state.score;
       var wasGameOver = state.gameOver;
@@ -550,8 +725,11 @@
   };
 
   setupProfileModal();
+  setupMusicControls();
+  setupGlobalAudioUnlock();
   renderLeaderboard();
   buildGrid();
   render();
-  startCountdown();
+  syncBackgroundMusic();
+  startAutoplayRetry();
 })();
