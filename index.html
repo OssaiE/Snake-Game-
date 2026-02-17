@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Snake</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Snake</h1>
+      <section class="panel">
+        <div>Score: <strong id="score">0</strong></div>
+        <div class="actions">
+          <button id="pause-btn" type="button">Pause</button>
+          <button id="restart-btn" type="button">Restart</button>
+        </div>
+      </section>
+      <div id="status">Running</div>
+      <section id="game" aria-label="Snake game board"></section>
+      <section class="touch-controls" aria-label="Direction controls">
+        <span class="empty">.</span>
+        <button type="button" data-direction="up">Up</button>
+        <span class="empty">.</span>
+        <button type="button" data-direction="left">Left</button>
+        <button type="button" data-direction="down">Down</button>
+        <button type="button" data-direction="right">Right</button>
+      </section>
+      <p>Controls: Arrow keys or WASD, P or Space to pause, R to restart.</p>
+    </main>
+
+    <script src="./snake-logic.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

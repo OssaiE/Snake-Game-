@@ -1,0 +1,78 @@
+:root {
+  font-family: Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 16px;
+  background: #f6f7f8;
+  color: #222;
+}
+
+.container {
+  max-width: 460px;
+  margin: 0 auto;
+}
+
+.panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 8px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  border: 1px solid #bbb;
+  background: #fff;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+#status {
+  margin: 8px 0 12px;
+  font-size: 14px;
+}
+
+#game {
+  display: grid;
+  border: 1px solid #bbb;
+  width: fit-content;
+  background: #fff;
+}
+
+.cell {
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  border: 1px solid #efefef;
+}
+
+.cell.snake {
+  background: #2f7d32;
+}
+
+.cell.head {
+  background: #1b5e20;
+}
+
+.cell.food {
+  background: #c62828;
+}
+
+.touch-controls {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.touch-controls .empty {
+  visibility: hidden;
+}
