@@ -444,17 +444,18 @@ button:active,
 .game-wrapper {
   position: relative;
   width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 #game {
   display: grid;
   border: 1px solid #bbb;
-  width: 100%;
+  width: min(100%, 70dvh);
   aspect-ratio: 1 / 1;
   height: auto;
-  min-height: 260px;
-  max-height: 65vh;
-  max-width: 100%;
+  min-height: 0;
+  max-height: none;
   background: #fff;
   border-radius: 20px;
   overflow: hidden;
@@ -751,8 +752,8 @@ button:active,
   }
 
   #game {
-    width: 100%;
-    min-height: 240px;
-    max-height: 60vh;
+    width: min(100%, 60dvh);
+    min-height: 0;
+    max-height: none;
   }
 }

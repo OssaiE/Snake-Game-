@@ -56,6 +56,8 @@
   var highScoreTarget = 0;
   var scoreRafId = null;
   var highScoreRafId = null;
+  var countdownVoice = null;
+  var countdownVoiceLoaded = false;
   var MENU_MUSIC_VOLUME = 0.12;
   var GAME_MUSIC_VOLUME = 0.07;
   var POP_SFX_GAIN = 0.32;
@@ -797,31 +799,76 @@
 
     var frequency = 440;
     if (count === 3) frequency = 523.25;
-    if (count === 2) frequency = 659.25;
-    if (count === 1) frequency = 783.99;
+    if (count === 2) frequency = 587.33;
+    if (count === 1) frequency = 659.25;
 
     var now = audioCtx.currentTime;
     var osc = audioCtx.createOscillator();
     var gain = audioCtx.createGain();
-    osc.type = "sine";
+    osc.type = "triangle";
     osc.frequency.setValueAtTime(frequency, now);
     gain.gain.setValueAtTime(0.001, now);
-    gain.gain.exponentialRampToValueAtTime(COUNTDOWN_SFX_GAIN, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    gain.gain.exponentialRampToValueAtTime(COUNTDOWN_SFX_GAIN * 0.68, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start(now);
-    osc.stop(now + 0.22);
+    osc.stop(now + 0.18);
 
     if ("speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function") {
       var word = count === 3 ? "Ready" : count === 2 ? "Set" : "Go";
       var utterance = new window.SpeechSynthesisUtterance(word);
-      utterance.rate = 1.05;
-      utterance.pitch = 1.0;
-      utterance.volume = 0.85;
+      utterance.lang = "en-US";
+      utterance.rate = 0.95;
+      utterance.pitch = 0.98;
+      utterance.volume = 0.92;
+      var preferredVoice = getPreferredCountdownVoice();
+      if (preferredVoice) utterance.voice = preferredVoice;
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utterance);
     }
+  }
+
+  function scoreVoice(voice) {
+    var name = (voice && voice.name ? voice.name : "").toLowerCase();
+    var score = 0;
+    if (voice && voice.localService) score += 3;
+    if (name.indexOf("samantha") >= 0) score += 6;
+    if (name.indexOf("siri") >= 0) score += 6;
+    if (name.indexOf("google us english") >= 0) score += 5;
+    if (name.indexOf("alex") >= 0) score += 4;
+    if (name.indexOf("victoria") >= 0) score += 3;
+    if (name.indexOf("enhanced") >= 0) score += 2;
+    if (name.indexOf("compact") >= 0) score -= 3;
+    return score;
+  }
+
+  function getPreferredCountdownVoice() {
+    if (!("speechSynthesis" in window)) return null;
+    if (countdownVoiceLoaded) return countdownVoice;
+    countdownVoiceLoaded = true;
+
+    var voices = window.speechSynthesis.getVoices() || [];
+    var englishVoices = voices.filter(function (voice) {
+      var lang = (voice.lang || "").toLowerCase();
+      return lang.indexOf("en") === 0;
+    });
+    if (englishVoices.length === 0) return null;
+
+    englishVoices.sort(function (a, b) {
+      return scoreVoice(b) - scoreVoice(a);
+    });
+    countdownVoice = englishVoices[0] || null;
+    return countdownVoice;
+  }
+
+  function setupSpeechVoices() {
+    if (!("speechSynthesis" in window)) return;
+    getPreferredCountdownVoice();
+    window.speechSynthesis.onvoiceschanged = function () {
+      countdownVoiceLoaded = false;
+      getPreferredCountdownVoice();
+    };
   }
 
   function playSharpMilestoneCue(previousScore, nextScore) {
@@ -984,6 +1031,7 @@
 
   setupProfileModal();
   setupMusicControls();
+  setupSpeechVoices();
   setupGlobalAudioUnlock();
   setupButtonClickSfx();
   renderLeaderboard();
