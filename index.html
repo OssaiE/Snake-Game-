@@ -104,35 +104,69 @@
               </div>
             </div>
           </section>
-          <section class="instructions info-card" aria-label="Game instructions">
-            <h2>Game instructions</h2>
-            <div class="instruction-block">
-              <h3>Controls</h3>
-              <p>
-                Arrow keys
-                <span class="keycaps"><span class="keycap">↑</span><span class="keycap">↓</span><span class="keycap">→</span><span class="keycap">←</span></span>
-                or W,A,S,D
-                <span class="keycaps"><span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span></span>
-                move the snake.
-              </p>
+          <section class="mobile-controls" aria-label="Mobile controls">
+            <div class="mobile-controls-grid">
+              <span></span>
+              <button class="mobile-control-btn" type="button" data-direction="up" aria-label="Move up">↑</button>
+              <span></span>
+              <button class="mobile-control-btn" type="button" data-direction="left" aria-label="Move left">←</button>
+              <button class="mobile-control-btn" type="button" data-direction="down" aria-label="Move down">↓</button>
+              <button class="mobile-control-btn" type="button" data-direction="right" aria-label="Move right">→</button>
             </div>
-            <div class="instruction-block">
-              <h3>Scoring</h3>
-              <p class="score-legend">
-                <span class="food-chip chip-yellow"></span> Yellow: <strong>3 points</strong>
-                <span class="food-chip chip-orange"></span> Orange: <strong>2 points</strong>
-                <span class="food-chip chip-red"></span> Red: <strong>1 point</strong>
-              </p>
+          </section>
+          <section class="instructions info-card collapsible" aria-label="Game instructions">
+            <div class="info-card-header">
+              <h2>Game instructions</h2>
+              <button
+                class="collapse-toggle"
+                type="button"
+                data-collapse-target="instructions-body"
+                aria-expanded="true"
+              >
+                Collapse
+              </button>
             </div>
-            <div class="instruction-block">
-              <h3>Obstacle rule</h3>
-              <p>every 12 points adds multiple gray obstacles; eating one shrinks the snake.</p>
+            <div id="instructions-body" class="collapsible-body">
+              <div class="instruction-block">
+                <h3>Controls</h3>
+                <p>
+                  Arrow keys
+                  <span class="keycaps"><span class="keycap">↑</span><span class="keycap">↓</span><span class="keycap">→</span><span class="keycap">←</span></span>
+                  or W,A,S,D
+                  <span class="keycaps"><span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span></span>
+                  move the snake.
+                </p>
+              </div>
+              <div class="instruction-block">
+                <h3>Scoring</h3>
+                <p class="score-legend">
+                  <span class="food-chip chip-yellow"></span> Yellow: <strong>3 points</strong>
+                  <span class="food-chip chip-orange"></span> Orange: <strong>2 points</strong>
+                  <span class="food-chip chip-red"></span> Red: <strong>1 point</strong>
+                </p>
+              </div>
+              <div class="instruction-block">
+                <h3>Obstacle rule</h3>
+                <p>every 12 points adds multiple gray obstacles; eating one shrinks the snake.</p>
+              </div>
             </div>
           </section>
         </section>
-        <aside class="leaderboard info-card" aria-label="Leaderboard section">
-        <h2>Leaderboard</h2>
-        <ol id="leaderboard-list"></ol>
+        <aside class="leaderboard info-card collapsible" aria-label="Leaderboard section">
+        <div class="info-card-header">
+          <h2>Leaderboard</h2>
+          <button
+            class="collapse-toggle"
+            type="button"
+            data-collapse-target="leaderboard-body"
+            aria-expanded="true"
+          >
+            Collapse
+          </button>
+        </div>
+        <div id="leaderboard-body" class="collapsible-body">
+          <ol id="leaderboard-list"></ol>
+        </div>
         </aside>
       </div>
     </main>

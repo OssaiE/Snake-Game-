@@ -448,6 +448,37 @@ button:active,
   justify-content: center;
 }
 
+.mobile-controls {
+  display: none;
+}
+
+.mobile-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  gap: 8px;
+  justify-content: center;
+}
+
+.mobile-control-btn {
+  width: 52px;
+  height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #edeeef;
+  border-bottom-width: 3px;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0px 3.84615px 11.5385px rgba(103, 109, 124, 0.08),
+    0px 1.92308px 3.84615px rgba(103, 109, 124, 0.1), 0px 0.961538px 0.961538px rgba(103, 109, 124, 0.12);
+  color: #363b45;
+  font-family: "SF Pro Rounded", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 #game {
   display: grid;
   border: 1px solid #bbb;
@@ -677,9 +708,41 @@ button:active,
   background: #fff;
 }
 
+.info-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .leaderboard h2 {
   font-size: 16px;
   margin: 0 0 8px;
+}
+
+.collapse-toggle {
+  display: none;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid #edeeef;
+  border-bottom-width: 3px;
+  border-radius: 999px;
+  background: #fff;
+  color: #363b45;
+  font-family: "SF Pro Rounded", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.collapsible-body {
+  min-height: 0;
+  margin-top: 8px;
+}
+
+.collapsible.is-collapsed .collapsible-body {
+  display: none;
 }
 
 .leaderboard ol {
@@ -751,9 +814,35 @@ button:active,
     align-items: flex-start;
   }
 
+  .panel {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .mobile-controls {
+    display: block;
+  }
+
+  .collapse-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .info-card-header h2 {
+    margin-bottom: 0;
+  }
+
   #game {
     width: min(100%, 60dvh);
     min-height: 0;
     max-height: none;
+    touch-action: none;
   }
 }

@@ -33,6 +33,8 @@
   var pauseIconEl = document.getElementById("pause-icon");
   var pauseLabelEl = document.getElementById("pause-label");
   var controls = document.querySelectorAll("[data-direction]");
+  var collapseToggles = document.querySelectorAll(".collapse-toggle[data-collapse-target]");
+  var mobileMediaQuery = window.matchMedia("(max-width: 900px)");
 
   var state = SnakeLogic.createInitialState({ gridSize: GRID_SIZE });
   var tickId = null;
@@ -930,6 +932,94 @@
     });
   }
 
+  function setupSwipeControls() {
+    if (!gameRoot) return;
+    var startX = 0;
+    var startY = 0;
+    var tracking = false;
+    var SWIPE_MIN_DISTANCE = 18;
+
+    gameRoot.addEventListener(
+      "touchstart",
+      function (event) {
+        if (!event.touches || event.touches.length === 0) return;
+        var touch = event.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        tracking = true;
+      },
+      { passive: true }
+    );
+
+    gameRoot.addEventListener(
+      "touchend",
+      function (event) {
+        if (!tracking || !event.changedTouches || event.changedTouches.length === 0) return;
+        tracking = false;
+
+        var touch = event.changedTouches[0];
+        var dx = touch.clientX - startX;
+        var dy = touch.clientY - startY;
+        var absX = Math.abs(dx);
+        var absY = Math.abs(dy);
+        if (Math.max(absX, absY) < SWIPE_MIN_DISTANCE) return;
+
+        var direction = null;
+        if (absX > absY) {
+          direction = dx > 0 ? "right" : "left";
+        } else {
+          direction = dy > 0 ? "down" : "up";
+        }
+
+        markUserInteraction();
+        primeAudio();
+        handleDirection(direction);
+      },
+      { passive: true }
+    );
+  }
+
+  function updateCollapseButton(button, isCollapsed) {
+    if (!button) return;
+    button.textContent = isCollapsed ? "Expand" : "Collapse";
+    button.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+  }
+
+  function setupMobileCollapsibles() {
+    if (!collapseToggles || collapseToggles.length === 0) return;
+
+    function syncCollapsibleMode() {
+      var isMobile = mobileMediaQuery.matches;
+      collapseToggles.forEach(function (button) {
+        var section = button.closest(".collapsible");
+        if (!section) return;
+        if (!isMobile) {
+          section.classList.remove("is-collapsed");
+          updateCollapseButton(button, false);
+          return;
+        }
+        updateCollapseButton(button, section.classList.contains("is-collapsed"));
+      });
+    }
+
+    collapseToggles.forEach(function (button) {
+      button.addEventListener("click", function () {
+        if (!mobileMediaQuery.matches) return;
+        var section = button.closest(".collapsible");
+        if (!section) return;
+        var isCollapsed = section.classList.toggle("is-collapsed");
+        updateCollapseButton(button, isCollapsed);
+      });
+    });
+
+    syncCollapsibleMode();
+    if (typeof mobileMediaQuery.addEventListener === "function") {
+      mobileMediaQuery.addEventListener("change", syncCollapsibleMode);
+    } else if (typeof mobileMediaQuery.addListener === "function") {
+      mobileMediaQuery.addListener(syncCollapsibleMode);
+    }
+  }
+
   function handleKeydown(event) {
     markUserInteraction();
     primeAudio();
@@ -1033,6 +1123,8 @@
   setupMusicControls();
   setupSpeechVoices();
   setupGlobalAudioUnlock();
+  setupSwipeControls();
+  setupMobileCollapsibles();
   setupButtonClickSfx();
   renderLeaderboard();
   buildGrid();
