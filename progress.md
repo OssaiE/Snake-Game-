@@ -64,3 +64,6 @@ Original prompt: Build a classic Snake game in this repo.
 - Restyled high-score modal input and avatar picker to dark reference style with circular bordered avatar chips.
 - Rotated leaderboard storage key to `snake_leaderboard_v4` to reset leaderboard again.
 - Fixed global leaderboard duplicate rows by deduplicating merged entries in `sanitizeLeaderboardEntries` using `name+avatar+score` key and keeping the newest timestamp.
+- Cleared global leaderboard store in Cloudflare KV by setting `scores` key to `[]`.
+- Added obstacle-hit feedback in `app.js`: plays a descending sad SFX and triggers orange pulse effect when snake consumes an obstacle.
+- Added orange pulse animation styles (`#game.obstacle-hit-pulse`) in `styles.css`.

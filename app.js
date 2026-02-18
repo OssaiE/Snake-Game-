@@ -64,9 +64,11 @@
   var GAME_MUSIC_VOLUME = 0.07;
   var POP_SFX_GAIN = 0.32;
   var LOSE_SFX_GAIN = 0.28;
+  var OBSTACLE_HIT_SFX_GAIN = 0.3;
   var COUNTDOWN_SFX_GAIN = 0.26;
   var SHARP_SFX_GAIN = 0.36;
   var CLICK_SFX_GAIN = 0.22;
+  var obstaclePulseTimeoutId = null;
   var SCORE_MILESTONE_STEP = 12;
   var AVATARS = ["🐍", "🐸", "🐯", "🐼", "🦊", "🐙"];
   var LOSE_COMMENTARY = [
@@ -265,11 +267,16 @@
   }
 
   function tick() {
+    var previousState = state;
     var previousScore = state.score;
     var wasGameOver = state.gameOver;
     state = SnakeLogic.advance(state);
     refreshSpeedFromScore();
     if (state.score > previousScore) playPop();
+    if (didHitObstacle(previousState, state)) {
+      playObstacleHitSadSfx();
+      triggerObstacleHitPulse();
+    }
     playSharpMilestoneCue(previousScore, state.score);
     if (!wasGameOver && state.gameOver && state.food !== null) playLoseJingle();
     if (!wasGameOver && state.gameOver) handleGameOver();
@@ -903,6 +910,50 @@
     }
   }
 
+  function didHitObstacle(previousState, nextState) {
+    var prevObstacles = (previousState && previousState.obstacles) || [];
+    var nextObstacles = (nextState && nextState.obstacles) || [];
+    return nextObstacles.length < prevObstacles.length;
+  }
+
+  function triggerObstacleHitPulse() {
+    if (!gameRoot) return;
+    gameRoot.classList.remove("obstacle-hit-pulse");
+    void gameRoot.offsetWidth;
+    gameRoot.classList.add("obstacle-hit-pulse");
+    if (obstaclePulseTimeoutId) clearTimeout(obstaclePulseTimeoutId);
+    obstaclePulseTimeoutId = setTimeout(function () {
+      gameRoot.classList.remove("obstacle-hit-pulse");
+      obstaclePulseTimeoutId = null;
+    }, 340);
+  }
+
+  function playObstacleHitSadSfx() {
+    primeAudio();
+    if (!audioCtx) return;
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().catch(function () {});
+    }
+
+    var now = audioCtx.currentTime;
+    var notes = [392.0, 329.63, 261.63];
+    for (var i = 0; i < notes.length; i += 1) {
+      var start = now + i * 0.08;
+      var end = start + 0.12;
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(notes[i], start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(OBSTACLE_HIT_SFX_GAIN, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, end);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(end);
+    }
+  }
+
   function playCountdownCue(count) {
     primeAudio();
     if (!audioCtx) return;
@@ -1218,10 +1269,15 @@
     if (isInputLocked()) return;
     var steps = Math.max(1, Math.round(ms / currentTickMs));
     for (var i = 0; i < steps; i += 1) {
+      var previousState = state;
       var previousScore = state.score;
       var wasGameOver = state.gameOver;
       state = SnakeLogic.advance(state);
       if (state.score > previousScore) playPop();
+      if (didHitObstacle(previousState, state)) {
+        playObstacleHitSadSfx();
+        triggerObstacleHitPulse();
+      }
       playSharpMilestoneCue(previousScore, state.score);
       if (!wasGameOver && state.gameOver && state.food !== null) playLoseJingle();
       if (!wasGameOver && state.gameOver) handleGameOver();

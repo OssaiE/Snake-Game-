@@ -493,6 +493,22 @@ button:active,
   flex: 0 0 auto;
 }
 
+#game.obstacle-hit-pulse {
+  animation: obstacle-hit-pulse 340ms ease-out;
+}
+
+@keyframes obstacle-hit-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+  }
+  35% {
+    box-shadow: 0 0 0 6px rgba(244, 67, 54, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+  }
+}
+
 .game-over-overlay {
   position: absolute;
   inset: 0;
