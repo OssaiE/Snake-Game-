@@ -3,21 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ossai Sama Snake</title>
+    <title>Snake by ossaisama</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div id="countdown-modal" class="countdown-modal hidden" aria-live="polite" aria-label="Countdown">
-      <div class="countdown-content">
-        <div id="countdown-label" class="countdown-label">Ready</div>
-        <div id="countdown-value" class="countdown-value">3</div>
-      </div>
-    </div>
-      <div id="start-menu-modal" class="dialog-modal" aria-live="polite" aria-label="Start menu">
+    <div id="start-menu-modal" class="dialog-modal" aria-live="polite" aria-label="Start menu">
       <div class="dialog-content">
-        <h2>Ossai Sama Snake</h2>
+        <h2>Snake by ossaisama</h2>
         <p>Press start to begin.</p>
-        <button id="start-game-btn" type="button">Start Game</button>
+        <button id="start-game-btn" class="control-btn modal-btn" type="button">Start Game</button>
       </div>
     </div>
     <div id="high-score-modal" class="dialog-modal hidden" aria-live="polite" aria-label="New high score">
@@ -27,34 +21,113 @@
         <label for="high-score-name">Name</label>
         <input id="high-score-name" type="text" maxlength="16" placeholder="Player" />
         <div id="avatar-options" class="avatar-options" aria-label="Avatar options"></div>
-        <button id="save-high-score-btn" type="button">Save High Score</button>
+        <div class="modal-actions">
+          <button id="cancel-high-score-btn" class="control-btn modal-btn modal-btn-secondary" type="button">
+            Cancel
+          </button>
+          <button id="save-high-score-btn" class="control-btn modal-btn" type="button">
+            Save High Score
+          </button>
+        </div>
       </div>
     </div>
     <main class="container">
-      <h1>Ossai Sama Snake</h1>
+      <div class="topbar">
+        <h1>Snake by <a class="title-link" href="https://github.com/OssaiE" target="_blank" rel="noopener noreferrer">Ossai sama</a></h1>
+        <nav class="social-links" aria-label="Social links">
+          <a class="social-link" href="https://ossai.design" target="_blank" rel="noopener noreferrer" aria-label="Website">
+            <img src="./assets/social/globe-06.svg" alt="" />
+          </a>
+          <a class="social-link" href="https://www.linkedin.com/in/ossaiemmanuel/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+            <img src="./assets/social/linkedin.svg" alt="" />
+          </a>
+          <a class="social-link" href="https://x.com/waavvee_" target="_blank" rel="noopener noreferrer" aria-label="X">
+            <img src="./assets/social/x.svg" alt="" />
+          </a>
+          <a class="social-link" href="https://dribbble.com/Ossai" target="_blank" rel="noopener noreferrer" aria-label="Dribbble">
+            <img src="./assets/social/dribbble.svg" alt="" />
+          </a>
+          <a class="social-link" href="https://layers.to/emmaossai123" target="_blank" rel="noopener noreferrer" aria-label="Layers">
+            <img src="./assets/social/layers.svg" alt="" />
+          </a>
+        </nav>
+      </div>
       <section class="panel">
-        <div>
-          Score: <strong id="score">0</strong> |
-          High: <strong id="high-score">0</strong>
+        <div class="score-pill">
+          <img src="./assets/icons/up-pixel.svg" alt="" />
+          <span>Score <strong id="score">0</strong></span>
+          <span class="divider-line"></span>
+          <img src="./assets/icons/up-pixel-1.svg" alt="" />
+          <span>High Score <strong id="high-score">0</strong></span>
         </div>
         <div class="actions">
-          <button id="music-btn" type="button">Music: On</button>
-          <button id="pause-btn" type="button">Pause</button>
-          <button id="restart-btn" type="button">Restart</button>
+          <button id="music-btn" class="control-btn" type="button">
+            <img id="music-icon" src="./assets/icons/volume-max.svg" alt="" />
+            <span id="music-label">Music On</span>
+          </button>
+          <button id="pause-btn" class="control-btn" type="button">
+            <img id="pause-icon" src="./assets/icons/pause.svg" alt="" />
+            <span id="pause-label">Pause</span>
+          </button>
+          <button id="restart-btn" class="control-btn" type="button">
+            <img src="./assets/icons/redo.svg" alt="" />
+            <span>Restart</span>
+          </button>
         </div>
       </section>
-      <div id="status">Running</div>
       <div class="main-layout">
         <section class="game-pane">
-          <section id="game" aria-label="Snake game board"></section>
-          <section class="instructions" aria-label="Game instructions">
+          <section class="game-wrapper" aria-label="Snake game board">
+            <section id="game"></section>
+            <div id="countdown-modal" class="countdown-modal hidden" aria-live="polite" aria-label="Countdown">
+              <div class="countdown-content">
+                <div id="countdown-label" class="countdown-label">Ready</div>
+                <div id="countdown-value" class="countdown-value">3</div>
+              </div>
+            </div>
+            <div id="pause-overlay" class="pause-overlay hidden" aria-live="polite">
+              <div class="pause-card">
+                <h2>Paused</h2>
+                <p>Press Play to continue.</p>
+              </div>
+            </div>
+            <div id="game-over-overlay" class="game-over-overlay hidden" aria-live="polite">
+              <div class="game-over-card">
+                <h2 id="game-over-title">Game Over</h2>
+                <p id="game-over-text">Try again</p>
+                <button id="game-over-restart-btn" class="control-btn modal-btn" type="button">
+                  Restart
+                </button>
+              </div>
+            </div>
+          </section>
+          <section class="instructions info-card" aria-label="Game instructions">
             <h2>Game instructions</h2>
-            <p>Controls: Arrow keys or WASD, P or Space to pause, R to restart.</p>
-            <p>Food: small yellow = 3, medium orange = 2, large red = 1.</p>
-            <p>Obstacle rule: every 30 points adds multiple gray obstacles; eating one shrinks the snake.</p>
+            <div class="instruction-block">
+              <h3>Controls</h3>
+              <p>
+                Arrow keys
+                <span class="keycaps"><span class="keycap">↑</span><span class="keycap">↓</span><span class="keycap">→</span><span class="keycap">←</span></span>
+                or W,A,S,D
+                <span class="keycaps"><span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span></span>
+                move the snake.
+              </p>
+            </div>
+            <div class="instruction-block">
+              <h3>Scoring</h3>
+              <p class="score-legend">
+                <span class="food-chip chip-yellow"></span> Yellow: <strong>3 points</strong>
+                <span class="food-chip chip-orange"></span> Orange: <strong>2 points</strong>
+                <span class="food-chip chip-red"></span> Red: <strong>1 point</strong>
+              </p>
+            </div>
+            <div class="instruction-block">
+              <h3>Obstacle rule</h3>
+              <p>every 12 points adds multiple gray obstacles; eating one shrinks the snake.</p>
+            </div>
           </section>
         </section>
-        <aside class="leaderboard" aria-label="Leaderboard section">
+        <aside class="leaderboard info-card" aria-label="Leaderboard section">
         <h2>Leaderboard</h2>
         <ol id="leaderboard-list"></ol>
         </aside>

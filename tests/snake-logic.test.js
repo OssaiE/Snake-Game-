@@ -34,7 +34,7 @@ function testWallCollision() {
     food: { x: 0, y: 0, type: "large", scale: 0.78, color: "#c62828", points: 1 },
     obstacles: [],
     score: 0,
-    nextObstacleScore: 30,
+    nextObstacleScore: 12,
     gameOver: false,
     paused: false,
   };
@@ -58,7 +58,7 @@ function testSelfCollision() {
     food: { x: 5, y: 5, type: "large", scale: 0.78, color: "#c62828", points: 1 },
     obstacles: [],
     score: 0,
-    nextObstacleScore: 30,
+    nextObstacleScore: 12,
     gameOver: false,
     paused: false,
   };
@@ -75,7 +75,7 @@ function testGrowthAndScore() {
     food: { x: 3, y: 2, type: "small", scale: 0.45, color: "#fbc02d", points: 3 },
     obstacles: [],
     score: 0,
-    nextObstacleScore: 30,
+    nextObstacleScore: 12,
     gameOver: false,
     paused: false,
   };
@@ -100,7 +100,7 @@ function testFoodPlacementAvoidsSnake() {
   assert.ok(typeof food.color === "string" && food.color.length > 0, "food should include color");
 }
 
-function testObstacleSpawnsAtThirtyPoints() {
+function testObstacleSpawnsAtTwelvePoints() {
   let state = {
     gridSize: 8,
     snake: [{ x: 2, y: 2 }, { x: 1, y: 2 }, { x: 0, y: 2 }],
@@ -108,19 +108,19 @@ function testObstacleSpawnsAtThirtyPoints() {
     nextDirection: "right",
     food: { x: 3, y: 2, type: "large", scale: 0.78, color: "#c62828", points: 1 },
     obstacles: [],
-    score: 29,
-    nextObstacleScore: 30,
+    score: 11,
+    nextObstacleScore: 12,
     gameOver: false,
     paused: false,
   };
   const next = SnakeLogic.advance(state, fixedRandom([0]));
-  assert.strictEqual(next.score, 30, "score should reach 30");
+  assert.strictEqual(next.score, 12, "score should reach 12");
   assert.strictEqual(
     next.obstacles.length,
     SnakeLogic.OBSTACLES_PER_MILESTONE,
-    "multiple obstacles should spawn at 30 points"
+    "multiple obstacles should spawn at 12 points"
   );
-  assert.strictEqual(next.nextObstacleScore, 60, "next obstacle threshold should move to 60");
+  assert.strictEqual(next.nextObstacleScore, 24, "next obstacle threshold should move to 24");
 }
 
 function testEatingObstacleShrinksSnake() {
@@ -132,7 +132,7 @@ function testEatingObstacleShrinksSnake() {
     food: { x: 7, y: 7, type: "large", scale: 0.78, color: "#c62828", points: 1 },
     obstacles: [{ x: 4, y: 2 }],
     score: 10,
-    nextObstacleScore: 30,
+    nextObstacleScore: 12,
     gameOver: false,
     paused: false,
   };
@@ -142,6 +142,37 @@ function testEatingObstacleShrinksSnake() {
   assert.strictEqual(next.obstacles.length, 0, "eaten obstacle should be removed");
 }
 
+function testFoodCountScalesWithSnakeLength() {
+  let state = {
+    gridSize: 10,
+    snake: [
+      { x: 2, y: 2 },
+      { x: 1, y: 2 },
+      { x: 0, y: 2 },
+      { x: 0, y: 3 },
+      { x: 1, y: 3 },
+      { x: 2, y: 3 },
+      { x: 3, y: 3 },
+      { x: 4, y: 3 },
+      { x: 5, y: 3 },
+    ],
+    direction: "right",
+    nextDirection: "right",
+    food: { x: 3, y: 2, type: "large", scale: 0.78, color: "#c62828", points: 1 },
+    foods: [
+      { x: 3, y: 2, type: "large", scale: 0.78, color: "#c62828", points: 1 },
+      { x: 7, y: 7, type: "medium", scale: 0.62, color: "#ef6c00", points: 2 },
+    ],
+    obstacles: [],
+    score: 0,
+    nextObstacleScore: 12,
+    gameOver: false,
+    paused: false,
+  };
+  const next = SnakeLogic.advance(state, fixedRandom([0]));
+  assert.strictEqual(next.foods.length >= 2, true, "longer snake should keep multiple foods");
+}
+
 function run() {
   testMovement();
   testDirectionChange();
@@ -149,8 +180,9 @@ function run() {
   testSelfCollision();
   testGrowthAndScore();
   testFoodPlacementAvoidsSnake();
-  testObstacleSpawnsAtThirtyPoints();
+  testObstacleSpawnsAtTwelvePoints();
   testEatingObstacleShrinksSnake();
+  testFoodCountScalesWithSnakeLength();
   console.log("snake-logic tests passed");
 }
 

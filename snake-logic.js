@@ -20,6 +20,10 @@
     { id: "large", scale: 0.78, color: "#c62828", points: 1, weight: 45 },
   ];
   var OBSTACLES_PER_MILESTONE = 3;
+  var OBSTACLE_SCORE_STEP = 12;
+  var BASE_SNAKE_LENGTH = 3;
+  var FOOD_LENGTH_STEP = 6;
+  var MAX_FOOD_COUNT = 4;
 
   function cloneSnake(snake) {
     return snake.map(function (segment) {
@@ -103,6 +107,48 @@
     return makeFood(position, randomFn);
   }
 
+  function getFoodsFromState(state) {
+    if (Array.isArray(state.foods)) {
+      return state.foods.filter(Boolean);
+    }
+    return state.food ? [state.food] : [];
+  }
+
+  function getTargetFoodCount(snakeLength) {
+    var extraFoods = Math.floor(Math.max(0, snakeLength - BASE_SNAKE_LENGTH) / FOOD_LENGTH_STEP);
+    return Math.min(MAX_FOOD_COUNT, 1 + extraFoods);
+  }
+
+  function fillFoods(gridSize, snake, obstacles, foods, targetCount, randomFn) {
+    var nextFoods = (foods || []).map(function (food) {
+      return Object.assign({}, food);
+    });
+
+    while (nextFoods.length < targetCount) {
+      var occupied = new Set(snake.map(posKey));
+      (obstacles || []).forEach(function (obstacle) {
+        occupied.add(posKey(obstacle));
+      });
+      nextFoods.forEach(function (food) {
+        occupied.add(posKey(food));
+      });
+
+      var freeCells = [];
+      for (var y = 0; y < gridSize; y += 1) {
+        for (var x = 0; x < gridSize; x += 1) {
+          var candidate = { x: x, y: y };
+          if (!occupied.has(posKey(candidate))) freeCells.push(candidate);
+        }
+      }
+
+      if (freeCells.length === 0) break;
+      var position = freeCells[randomInt(freeCells.length, randomFn)];
+      nextFoods.push(makeFood(position, randomFn));
+    }
+
+    return nextFoods;
+  }
+
   function createInitialState(options) {
     var opts = options || {};
     var gridSize = opts.gridSize || 16;
@@ -115,17 +161,19 @@
     ];
     var direction = "right";
     var obstacles = [];
-    var food = placeFood(gridSize, snake, obstacles, opts.randomFn);
+    var foods = fillFoods(gridSize, snake, obstacles, [], 1, opts.randomFn);
+    var food = foods.length > 0 ? foods[0] : null;
 
     return {
       gridSize: gridSize,
       snake: snake,
       direction: direction,
       nextDirection: direction,
+      foods: foods,
       food: food,
       obstacles: obstacles,
       score: 0,
-      nextObstacleScore: 30,
+      nextObstacleScore: OBSTACLE_SCORE_STEP,
       gameOver: false,
       paused: false,
     };
@@ -150,7 +198,9 @@
     var vector = DIRECTIONS[direction];
     var head = snake[0];
     var occupied = new Set(snake.map(posKey));
-    if (state.food) occupied.add(posKey(state.food));
+    getFoodsFromState(state).forEach(function (food) {
+      occupied.add(posKey(food));
+    });
     (state.obstacles || []).forEach(function (obstacle) {
       occupied.add(posKey(obstacle));
     });
@@ -169,7 +219,9 @@
 
   function placeObstacleFallback(state, snake, randomFn) {
     var occupied = new Set(snake.map(posKey));
-    if (state.food) occupied.add(posKey(state.food));
+    getFoodsFromState(state).forEach(function (food) {
+      occupied.add(posKey(food));
+    });
     (state.obstacles || []).forEach(function (obstacle) {
       occupied.add(posKey(obstacle));
     });
@@ -202,7 +254,10 @@
 
     var snake = cloneSnake(state.snake);
     var obstacles = cloneObstacles(state.obstacles);
-    var nextObstacleScore = state.nextObstacleScore || 30;
+    var foods = getFoodsFromState(state).map(function (food) {
+      return Object.assign({}, food);
+    });
+    var nextObstacleScore = state.nextObstacleScore || OBSTACLE_SCORE_STEP;
     var head = snake[0];
     var nextHead = nextHeadPosition(head, direction);
 
@@ -210,8 +265,10 @@
       return Object.assign({}, state, { direction: direction, gameOver: true });
     }
 
-    var eatingFood =
-      state.food && nextHead.x === state.food.x && nextHead.y === state.food.y;
+    var eatenFoodIndex = foods.findIndex(function (food) {
+      return nextHead.x === food.x && nextHead.y === food.y;
+    });
+    var eatingFood = eatenFoodIndex >= 0;
     var obstacleIndex = obstacles.findIndex(function (obstacle) {
       return obstacle.x === nextHead.x && obstacle.y === nextHead.y;
     });
@@ -224,10 +281,10 @@
 
     snake.unshift(nextHead);
     var score = state.score;
-    var food = state.food;
+    var eatenFood = null;
     if (eatingFood) {
-      score += state.food.points;
-      food = placeFood(state.gridSize, snake, obstacles, randomFn);
+      eatenFood = foods.splice(eatenFoodIndex, 1)[0];
+      score += eatenFood.points;
     } else {
       snake.pop();
     }
@@ -237,10 +294,24 @@
       if (snake.length > 2) snake.pop();
     }
 
+    var targetFoodCount = getTargetFoodCount(snake.length);
+    if (foods.length > targetFoodCount) {
+      foods = foods.slice(0, targetFoodCount);
+    }
+    foods = fillFoods(
+      state.gridSize,
+      snake,
+      obstacles,
+      foods,
+      targetFoodCount,
+      randomFn
+    );
+    var food = foods.length > 0 ? foods[0] : null;
+
     while (score >= nextObstacleScore) {
       for (var spawnCount = 0; spawnCount < OBSTACLES_PER_MILESTONE; spawnCount += 1) {
         var spawnedObstacle = placeObstacle(
-          { gridSize: state.gridSize, food: food, obstacles: obstacles },
+          { gridSize: state.gridSize, food: food, foods: foods, obstacles: obstacles },
           snake,
           direction,
           randomFn
@@ -248,18 +319,19 @@
         if (!spawnedObstacle) break;
         obstacles.push(spawnedObstacle);
       }
-      nextObstacleScore += 30;
+      nextObstacleScore += OBSTACLE_SCORE_STEP;
     }
 
     return Object.assign({}, state, {
       snake: snake,
       direction: direction,
       nextDirection: direction,
+      foods: foods,
       food: food,
       obstacles: obstacles,
       score: score,
       nextObstacleScore: nextObstacleScore,
-      gameOver: food === null,
+      gameOver: foods.length === 0,
     });
   }
 
@@ -272,6 +344,8 @@
     DIRECTIONS: DIRECTIONS,
     FOOD_TYPES: FOOD_TYPES,
     OBSTACLES_PER_MILESTONE: OBSTACLES_PER_MILESTONE,
+    OBSTACLE_SCORE_STEP: OBSTACLE_SCORE_STEP,
+    getTargetFoodCount: getTargetFoodCount,
     createInitialState: createInitialState,
     placeFood: placeFood,
     withDirection: withDirection,

@@ -38,3 +38,28 @@ Original prompt: Build a classic Snake game in this repo.
 - Renamed title to "Ossai Sama Snake" across page title and headings.
 - Added bundled SF Pro Rounded `@font-face` files from `assets/fonts` and switched app typography to that family.
 - Implemented score-based snake speed progression: starts slow and accelerates as score increases.
+- Disabled page scrolling during gameplay input and prevented arrow-key default scroll behavior.
+- Increased grid density to 22x22 cells.
+- Restyled music/pause/restart controls with imported SVG icons and pill button style matching reference.
+- Unified leaderboard and instruction containers under shared card styling.
+- Updated leaderboard to reference-style row list with score badges and separators.
+- Refactored viewport layout sizing so header/actions/game/cards fit without clipping on desktop.
+- Applied modal buttons to shared pill style (`control-btn modal-btn`) for start/high-score dialogs.
+- Fixed clipping by removing rigid viewport locks and switching to `100dvh`-based min-height sizing.
+- Added dedicated `togglePausePlay()` handler used by both keyboard and button events.
+- Updated instruction/leaderboard containers to 41px radius with requested multi-drop-shadow filter.
+- Removed status line and added a game-over overlay modal anchored on top of the game grid.
+- Switched pause/play button icon+label mapping as requested.
+- Set instruction/leaderboard radius to match grid (20px) and made game board fill 100% of the 65% pane width.
+- Moved countdown modal into the grid overlay layer (no full-screen countdown modal).
+- Added randomized game-over commentary (mix of teasing and encouraging lines).
+- Restyled instructions to match provided design pattern (section headings, keycaps, scoring chips).
+- Darkened and emboldened leaderboard number badges.
+- Added sharp milestone cue at every 12 points and changed obstacle milestone cadence to every 12 points.
+- Rotated leaderboard storage key to `snake_leaderboard_v2` to reset existing leaderboard data.
+- Renamed game title/header/start modal title to "Snake by ossaisama".
+- Added top-right clickable social icon links (Website, LinkedIn, X, Dribbble, Layers) with reference-inspired circular styling.
+- Rotated leaderboard storage key again to `snake_leaderboard_v3` to reset current leaderboard data.
+- Added optional Cancel action to high-score modal; users can skip saving a new high score.
+- Restyled high-score modal input and avatar picker to dark reference style with circular bordered avatar chips.
+- Rotated leaderboard storage key to `snake_leaderboard_v4` to reset leaderboard again.

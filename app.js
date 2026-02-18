@@ -3,10 +3,15 @@
 
   var BASE_TICK_MS = 170;
   var MIN_TICK_MS = 60;
+  var GRID_SIZE = 22;
   var gameRoot = document.getElementById("game");
   var scoreEl = document.getElementById("score");
   var highScoreEl = document.getElementById("high-score");
-  var statusEl = document.getElementById("status");
+  var gameOverOverlayEl = document.getElementById("game-over-overlay");
+  var gameOverTitleEl = document.getElementById("game-over-title");
+  var gameOverTextEl = document.getElementById("game-over-text");
+  var gameOverRestartBtn = document.getElementById("game-over-restart-btn");
+  var pauseOverlayEl = document.getElementById("pause-overlay");
   var startMenuModalEl = document.getElementById("start-menu-modal");
   var startGameBtn = document.getElementById("start-game-btn");
   var countdownModalEl = document.getElementById("countdown-modal");
@@ -16,21 +21,27 @@
   var highScoreModalTextEl = document.getElementById("high-score-modal-text");
   var highScoreNameInput = document.getElementById("high-score-name");
   var avatarOptionsEl = document.getElementById("avatar-options");
+  var cancelHighScoreBtn = document.getElementById("cancel-high-score-btn");
   var saveHighScoreBtn = document.getElementById("save-high-score-btn");
   var musicBtn = document.getElementById("music-btn");
+  var musicIconEl = document.getElementById("music-icon");
+  var musicLabelEl = document.getElementById("music-label");
   var bgMusicEl = document.getElementById("bg-music");
   var leaderboardListEl = document.getElementById("leaderboard-list");
   var restartBtn = document.getElementById("restart-btn");
   var pauseBtn = document.getElementById("pause-btn");
+  var pauseIconEl = document.getElementById("pause-icon");
+  var pauseLabelEl = document.getElementById("pause-label");
   var controls = document.querySelectorAll("[data-direction]");
 
-  var state = SnakeLogic.createInitialState({ gridSize: 16 });
+  var state = SnakeLogic.createInitialState({ gridSize: GRID_SIZE });
   var tickId = null;
   var countdownId = null;
   var currentTickMs = BASE_TICK_MS;
   var audioCtx = null;
   var hasPlayedLoseSound = false;
   var hasRecordedScore = false;
+  var gameOverCommentary = "Try again.";
   var inMenu = true;
   var countdownSeconds = 0;
   var highScore = 0;
@@ -39,19 +50,44 @@
   var autoplayRetryId = null;
   var musicEnabled = true;
   var selectedAvatar = "🐍";
+  var displayedScore = 0;
+  var displayedHighScore = 0;
+  var scoreTarget = 0;
+  var highScoreTarget = 0;
+  var scoreRafId = null;
+  var highScoreRafId = null;
+  var typewriterTimers = new WeakMap();
+  var typedGameOverText = "";
   var MENU_MUSIC_VOLUME = 0.12;
   var GAME_MUSIC_VOLUME = 0.07;
   var POP_SFX_GAIN = 0.32;
   var LOSE_SFX_GAIN = 0.28;
   var COUNTDOWN_SFX_GAIN = 0.26;
+  var SHARP_SFX_GAIN = 0.36;
+  var CLICK_SFX_GAIN = 0.22;
+  var SCORE_MILESTONE_STEP = 12;
   var AVATARS = ["🐍", "🐸", "🐯", "🐼", "🦊", "🐙"];
+  var LOSE_COMMENTARY = [
+    "Ha ha, try again next time.",
+    "That turn was rough. Reset and run it back.",
+    "Close, but the wall won that duel.",
+    "You got clipped. Next run will be cleaner.",
+    "Not today. Try another route and dominate.",
+    "Shake it off and go again.",
+  ];
+  var WIN_COMMENTARY = [
+    "Perfect clear. That was sharp.",
+    "Huge win. You controlled the whole board.",
+    "Champion run. Try to beat your own score now.",
+  ];
   var PLAYER_PROFILE_KEY = "snake_player_profile_v1";
-  var LEADERBOARD_KEY = "snake_leaderboard_v1";
+  var LEADERBOARD_KEY = "snake_leaderboard_v4";
   var MUSIC_ENABLED_KEY = "snake_music_enabled_v1";
   var leaderboard = loadLeaderboard();
   var playerProfile = loadPlayerProfile();
   musicEnabled = loadMusicEnabled();
   highScore = leaderboard.length > 0 ? leaderboard[0].score : 0;
+  displayedHighScore = highScore;
   selectedAvatar = playerProfile.avatar;
 
   function buildGrid() {
@@ -101,43 +137,147 @@
       if (index === 0) markCell(segment.x, segment.y, "head");
     });
 
-    if (state.food) {
-      markCell(state.food.x, state.food.y, "food");
-      markCell(state.food.x, state.food.y, "food-" + state.food.type);
+    var foods = Array.isArray(state.foods)
+      ? state.foods
+      : state.food
+      ? [state.food]
+      : [];
+    foods.forEach(function (food) {
+      markCell(food.x, food.y, "food");
+      markCell(food.x, food.y, "food-" + food.type);
       var foodCell = gameRoot.querySelector(
-        '.cell[data-x="' + state.food.x + '"][data-y="' + state.food.y + '"]'
+        '.cell[data-x="' + food.x + '"][data-y="' + food.y + '"]'
       );
       if (foodCell) {
-        foodCell.style.setProperty("--food-color", state.food.color);
-        foodCell.style.setProperty("--food-scale", String(state.food.scale));
+        foodCell.style.setProperty("--food-color", food.color);
+        foodCell.style.setProperty("--food-scale", String(food.scale));
       }
-    }
+    });
     (state.obstacles || []).forEach(function (obstacle) {
       markCell(obstacle.x, obstacle.y, "obstacle");
     });
 
-    scoreEl.textContent = String(state.score);
-    if (highScoreEl) highScoreEl.textContent = String(Math.max(highScore, state.score));
-    if (inMenu) {
-      statusEl.textContent = "Menu - press Start Game";
-    } else if (isHighScoreModalOpen()) {
-      statusEl.textContent = "New high score. Save your name and avatar.";
-    } else if (countdownSeconds > 0) {
-      statusEl.textContent = "Get ready";
-    } else if (state.gameOver && state.food === null) {
-      statusEl.textContent = "You win. Restart to play again.";
-    } else if (state.gameOver) {
-      statusEl.textContent = "Game over. Press Restart.";
-    } else if (state.paused) {
-      statusEl.textContent = "Paused";
-    } else {
-      statusEl.textContent = "Running";
+    updateScoreDisplays(state.score, Math.max(highScore, state.score));
+    if (pauseLabelEl) pauseLabelEl.textContent = state.paused ? "Play" : "Pause";
+    if (pauseIconEl) {
+      pauseIconEl.src = state.paused ? "./assets/icons/play.svg" : "./assets/icons/pause.svg";
     }
-    pauseBtn.textContent = state.paused ? "Resume" : "Pause";
-    if (musicBtn) musicBtn.textContent = "Music: " + (musicEnabled ? "On" : "Off");
+    if (musicLabelEl) musicLabelEl.textContent = musicEnabled ? "Music On" : "Music Off";
+    if (musicIconEl) {
+      musicIconEl.src = musicEnabled
+        ? "./assets/icons/volume-max.svg"
+        : "./assets/icons/volume-max-1.svg";
+    }
     renderStartMenuModal();
     renderCountdownModal();
+    renderPauseOverlay();
+    renderGameOverOverlay();
     syncBackgroundMusic();
+  }
+
+  function addScorePop(el) {
+    if (!el) return;
+    el.classList.remove("score-pop");
+    void el.offsetWidth;
+    el.classList.add("score-pop");
+  }
+
+  function animateNumber(from, to, durationMs, onFrame, onDone) {
+    if (from === to) {
+      onFrame(to);
+      onDone();
+      return null;
+    }
+    var startTime = performance.now();
+    var delta = to - from;
+    function frame(now) {
+      var progress = Math.min(1, (now - startTime) / durationMs);
+      var eased = 1 - Math.pow(1 - progress, 3);
+      var value = Math.round(from + delta * eased);
+      onFrame(value);
+      if (progress < 1) {
+        return requestAnimationFrame(frame);
+      }
+      onFrame(to);
+      onDone();
+      return null;
+    }
+    return requestAnimationFrame(frame);
+  }
+
+  function updateScoreDisplays(nextScore, nextHighScore) {
+    if (!scoreEl) return;
+
+    if (scoreTarget !== nextScore) {
+      scoreTarget = nextScore;
+      if (scoreRafId) cancelAnimationFrame(scoreRafId);
+      addScorePop(scoreEl);
+      scoreRafId = animateNumber(
+        displayedScore,
+        nextScore,
+        220,
+        function (value) {
+          displayedScore = value;
+          scoreEl.textContent = String(value);
+        },
+        function () {
+          scoreRafId = null;
+        }
+      );
+    } else {
+      scoreEl.textContent = String(displayedScore);
+    }
+
+    if (!highScoreEl) return;
+    if (highScoreTarget !== nextHighScore) {
+      highScoreTarget = nextHighScore;
+      if (highScoreRafId) cancelAnimationFrame(highScoreRafId);
+      addScorePop(highScoreEl);
+      highScoreRafId = animateNumber(
+        displayedHighScore,
+        nextHighScore,
+        260,
+        function (value) {
+          displayedHighScore = value;
+          highScoreEl.textContent = String(value);
+        },
+        function () {
+          highScoreRafId = null;
+        }
+      );
+    } else {
+      highScoreEl.textContent = String(displayedHighScore);
+    }
+  }
+
+  function typeText(el, text, msPerChar) {
+    if (!el) return;
+    var existingTimer = typewriterTimers.get(el);
+    if (existingTimer) clearInterval(existingTimer);
+    el.textContent = "";
+    el.classList.add("typing");
+    var i = 0;
+    var timer = setInterval(function () {
+      i += 1;
+      el.textContent = text.slice(0, i);
+      if (i >= text.length) {
+        clearInterval(timer);
+        typewriterTimers.delete(el);
+        el.classList.remove("typing");
+      }
+    }, msPerChar);
+    typewriterTimers.set(el, timer);
+  }
+
+  function setTextImmediate(el, text) {
+    if (!el) return;
+    var existingTimer = typewriterTimers.get(el);
+    if (existingTimer) {
+      clearInterval(existingTimer);
+      typewriterTimers.delete(el);
+    }
+    el.classList.remove("typing");
+    el.textContent = text;
   }
 
   function tick() {
@@ -146,6 +286,7 @@
     state = SnakeLogic.advance(state);
     refreshSpeedFromScore();
     if (state.score > previousScore) playPop();
+    playSharpMilestoneCue(previousScore, state.score);
     if (!wasGameOver && state.gameOver && state.food !== null) playLoseJingle();
     if (!wasGameOver && state.gameOver) handleGameOver();
     render();
@@ -191,10 +332,11 @@
   function restart() {
     closeHighScoreModal();
     inMenu = false;
-    state = SnakeLogic.createInitialState({ gridSize: 16 });
+    state = SnakeLogic.createInitialState({ gridSize: GRID_SIZE });
     currentTickMs = getTickMsForScore(state.score);
     hasPlayedLoseSound = false;
     hasRecordedScore = false;
+    gameOverCommentary = "Try again.";
     buildGrid();
     render();
     startCountdown();
@@ -203,6 +345,12 @@
   function handleDirection(nextDirection) {
     if (isInputLocked() || state.gameOver) return;
     state = SnakeLogic.withDirection(state, nextDirection);
+    render();
+  }
+
+  function togglePausePlay() {
+    if (inMenu || countdownSeconds > 0 || isHighScoreModalOpen() || state.gameOver) return;
+    state = SnakeLogic.togglePause(state);
     render();
   }
 
@@ -236,6 +384,36 @@
       startMenuModalEl.classList.remove("hidden");
     } else {
       startMenuModalEl.classList.add("hidden");
+    }
+  }
+
+  function renderGameOverOverlay() {
+    if (!gameOverOverlayEl || isHighScoreModalOpen() || inMenu || countdownSeconds > 0) {
+      if (gameOverOverlayEl) gameOverOverlayEl.classList.add("hidden");
+      return;
+    }
+    if (!state.gameOver) {
+      gameOverOverlayEl.classList.add("hidden");
+      return;
+    }
+    if (gameOverTitleEl) {
+      gameOverTitleEl.textContent = state.food === null ? "You Win" : "Game Over";
+    }
+    if (gameOverTextEl) {
+      setTextImmediate(gameOverTextEl, gameOverCommentary);
+    }
+    gameOverOverlayEl.classList.remove("hidden");
+  }
+
+  function renderPauseOverlay() {
+    if (!pauseOverlayEl || inMenu || countdownSeconds > 0 || isHighScoreModalOpen() || state.gameOver) {
+      if (pauseOverlayEl) pauseOverlayEl.classList.add("hidden");
+      return;
+    }
+    if (state.paused) {
+      pauseOverlayEl.classList.remove("hidden");
+    } else {
+      pauseOverlayEl.classList.add("hidden");
     }
   }
 
@@ -321,13 +499,29 @@
     leaderboardListEl.innerHTML = "";
     if (leaderboard.length === 0) {
       var empty = document.createElement("li");
-      empty.textContent = "No scores yet";
+      empty.className = "leaderboard-row";
+      var emptyBadge = document.createElement("span");
+      emptyBadge.className = "leaderboard-badge";
+      emptyBadge.textContent = "-";
+      var emptyText = document.createElement("span");
+      emptyText.className = "leaderboard-text";
+      emptyText.textContent = "No scores yet";
+      empty.appendChild(emptyBadge);
+      empty.appendChild(emptyText);
       leaderboardListEl.appendChild(empty);
       return;
     }
     leaderboard.slice(0, 10).forEach(function (entry) {
       var item = document.createElement("li");
-      item.textContent = entry.avatar + " " + entry.name + " - " + entry.score;
+      item.className = "leaderboard-row";
+      var badge = document.createElement("span");
+      badge.className = "leaderboard-badge";
+      badge.textContent = String(entry.score);
+      var text = document.createElement("span");
+      text.className = "leaderboard-text";
+      text.textContent = entry.avatar + " " + entry.name;
+      item.appendChild(badge);
+      item.appendChild(text);
       leaderboardListEl.appendChild(item);
     });
   }
@@ -357,6 +551,11 @@
   function handleGameOver() {
     if (hasRecordedScore) return;
     hasRecordedScore = true;
+    if (state.food === null) {
+      gameOverCommentary = WIN_COMMENTARY[Math.floor(Math.random() * WIN_COMMENTARY.length)];
+    } else {
+      gameOverCommentary = LOSE_COMMENTARY[Math.floor(Math.random() * LOSE_COMMENTARY.length)];
+    }
     if (state.score <= highScore) return;
     openHighScoreModal(state.score);
   }
@@ -399,7 +598,8 @@
       return;
     }
     if (highScoreModalTextEl) {
-      highScoreModalTextEl.textContent = "Score " + score + " beats the current high score.";
+      var modalText = "Score " + score + " beats the current high score.";
+      setTextImmediate(highScoreModalTextEl, modalText);
     }
     if (highScoreNameInput) highScoreNameInput.value = playerProfile.name;
     setSelectedAvatar(playerProfile.avatar);
@@ -516,12 +716,29 @@
         savePendingHighScore();
       });
     }
+    if (cancelHighScoreBtn) {
+      cancelHighScoreBtn.addEventListener("click", function () {
+        markUserInteraction();
+        closeHighScoreModal();
+        render();
+      });
+    }
     if (highScoreNameInput) {
+      highScoreNameInput.addEventListener("input", function () {
+        highScoreNameInput.classList.remove("name-pop");
+        void highScoreNameInput.offsetWidth;
+        highScoreNameInput.classList.add("name-pop");
+      });
       highScoreNameInput.addEventListener("keydown", function (event) {
         if (event.key === "Enter") {
           event.preventDefault();
           markUserInteraction();
           savePendingHighScore();
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeHighScoreModal();
+          render();
         }
       });
     }
@@ -632,10 +849,71 @@
     }
   }
 
+  function playSharpMilestoneCue(previousScore, nextScore) {
+    if (nextScore <= previousScore) return;
+    var previousMilestone = Math.floor(previousScore / SCORE_MILESTONE_STEP);
+    var nextMilestone = Math.floor(nextScore / SCORE_MILESTONE_STEP);
+    if (nextMilestone <= previousMilestone) return;
+
+    primeAudio();
+    if (!audioCtx) return;
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().catch(function () {});
+    }
+
+    var now = audioCtx.currentTime;
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(980, now);
+    osc.frequency.exponentialRampToValueAtTime(740, now + 0.07);
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(SHARP_SFX_GAIN, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.1);
+  }
+
+  function playClickSfx() {
+    primeAudio();
+    if (!audioCtx) return;
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().catch(function () {});
+    }
+
+    var now = audioCtx.currentTime;
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(920, now);
+    osc.frequency.exponentialRampToValueAtTime(760, now + 0.035);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(CLICK_SFX_GAIN, now + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.05);
+  }
+
+  function setupButtonClickSfx() {
+    document.addEventListener("click", function (event) {
+      var target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      if (!target.closest("button")) return;
+      playClickSfx();
+    });
+  }
+
   function handleKeydown(event) {
     markUserInteraction();
     primeAudio();
     var key = event.key.toLowerCase();
+    if (key.indexOf("arrow") === 0 || key === " ") {
+      event.preventDefault();
+    }
     if (inMenu && key === "enter") {
       event.preventDefault();
       startFromMenu();
@@ -648,9 +926,7 @@
     if (key === "arrowright" || key === "d") handleDirection("right");
     if (key === "p" || key === " ") {
       event.preventDefault();
-      if (isInputLocked()) return;
-      state = SnakeLogic.togglePause(state);
-      render();
+      togglePausePlay();
     }
     if (key === "r") restart();
   }
@@ -667,9 +943,7 @@
   pauseBtn.addEventListener("click", function () {
     markUserInteraction();
     primeAudio();
-    if (isInputLocked()) return;
-    state = SnakeLogic.togglePause(state);
-    render();
+    togglePausePlay();
   });
 
   if (startGameBtn) {
@@ -683,6 +957,12 @@
     markUserInteraction();
     restart();
   });
+  if (gameOverRestartBtn) {
+    gameOverRestartBtn.addEventListener("click", function () {
+      markUserInteraction();
+      restart();
+    });
+  }
   document.addEventListener("keydown", handleKeydown);
 
   window.render_game_to_text = function () {
@@ -691,6 +971,7 @@
       gridSize: state.gridSize,
       snake: state.snake,
       direction: state.direction,
+      foods: Array.isArray(state.foods) ? state.foods : state.food ? [state.food] : [],
       food: state.food,
       obstacles: state.obstacles || [],
       score: state.score,
@@ -717,6 +998,7 @@
       var wasGameOver = state.gameOver;
       state = SnakeLogic.advance(state);
       if (state.score > previousScore) playPop();
+      playSharpMilestoneCue(previousScore, state.score);
       if (!wasGameOver && state.gameOver && state.food !== null) playLoseJingle();
       if (!wasGameOver && state.gameOver) handleGameOver();
       if (state.gameOver) break;
@@ -727,8 +1009,10 @@
   setupProfileModal();
   setupMusicControls();
   setupGlobalAudioUnlock();
+  setupButtonClickSfx();
   renderLeaderboard();
   buildGrid();
+  updateScoreDisplays(state.score, Math.max(highScore, state.score));
   render();
   syncBackgroundMusic();
   startAutoplayRetry();
