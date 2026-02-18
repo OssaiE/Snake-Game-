@@ -9,3 +9,8 @@ script = ""
 name = "Run"
 icon = "run"
 command = "./run.sh"
+
+[[actions]]
+name = "Reset Leaderboard"
+icon = "refresh"
+command = "./reset_leaderboard.sh"
