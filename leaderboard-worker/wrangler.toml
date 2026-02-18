@@ -1,0 +1,7 @@
+name = "snake-leaderboard"
+main = "src/index.js"
+compatibility_date = "2026-02-18"
+
+[[kv_namespaces]]
+binding = "LEADERBOARD"
+id = "86bcf09122604224b3a318bf55146c4b"
