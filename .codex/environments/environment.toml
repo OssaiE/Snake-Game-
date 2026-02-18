@@ -3,7 +3,7 @@ version = 1
 name = "New project"
 
 [setup]
-script = "./run.sh"
+script = ""
 
 [[actions]]
 name = "Run"
