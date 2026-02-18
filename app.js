@@ -557,8 +557,8 @@
     remoteLeaderboardSyncBusy = true;
     loadRemoteLeaderboard()
       .then(function (remoteEntries) {
-        if (!remoteEntries || remoteEntries.length === 0) return;
-        applyLeaderboard(mergeLeaderboards(leaderboard, remoteEntries));
+        // Remote is the source of truth for shared leaderboard view.
+        applyLeaderboard(remoteEntries || []);
       })
       .finally(function () {
         remoteLeaderboardSyncBusy = false;
