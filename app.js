@@ -85,6 +85,11 @@
   var PLAYER_PROFILE_KEY = "snake_player_profile_v1";
   var LEADERBOARD_KEY = "snake_leaderboard_v4";
   var MUSIC_ENABLED_KEY = "snake_music_enabled_v1";
+  var REMOTE_LEADERBOARD_URL =
+    typeof window.SNAKE_SHARED_LEADERBOARD_URL === "string"
+      ? window.SNAKE_SHARED_LEADERBOARD_URL.trim()
+      : "";
+  var remoteLeaderboardSyncBusy = false;
   var leaderboard = loadLeaderboard();
   var playerProfile = loadPlayerProfile();
   musicEnabled = loadMusicEnabled();
@@ -447,22 +452,115 @@
       if (!stored) return [];
       var parsed = JSON.parse(stored);
       if (!Array.isArray(parsed)) return [];
-      return parsed
-        .filter(function (entry) {
-          return entry && typeof entry.name === "string" && Number.isFinite(entry.score);
-        })
-        .map(function (entry) {
-          return {
-            name: normalizePlayerName(entry.name),
-            score: entry.score,
-            avatar: AVATARS.indexOf(entry.avatar) >= 0 ? entry.avatar : AVATARS[0],
-            date: entry.date || new Date(0).toISOString(),
-          };
-        })
-        .slice(0, 10);
+      return sanitizeLeaderboardEntries(parsed);
     } catch (_err) {
       return [];
     }
+  }
+
+  function sanitizeLeaderboardEntries(entries) {
+    if (!Array.isArray(entries)) return [];
+    return entries
+      .filter(function (entry) {
+        return entry && typeof entry.name === "string" && Number.isFinite(entry.score);
+      })
+      .map(function (entry) {
+        return {
+          name: normalizePlayerName(entry.name),
+          score: Number(entry.score),
+          avatar: AVATARS.indexOf(entry.avatar) >= 0 ? entry.avatar : AVATARS[0],
+          date: entry.date || new Date(0).toISOString(),
+        };
+      })
+      .sort(function (a, b) {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.date < b.date ? 1 : -1;
+      })
+      .slice(0, 10);
+  }
+
+  function mergeLeaderboards(baseEntries, extraEntries) {
+    return sanitizeLeaderboardEntries((baseEntries || []).concat(extraEntries || []));
+  }
+
+  function applyLeaderboard(nextEntries) {
+    leaderboard = sanitizeLeaderboardEntries(nextEntries);
+    highScore = leaderboard.length > 0 ? leaderboard[0].score : 0;
+    saveLeaderboard();
+    renderLeaderboard();
+    updateScoreDisplays(state.score, Math.max(highScore, state.score));
+  }
+
+  function isRemoteLeaderboardEnabled() {
+    return /^https?:\/\//i.test(REMOTE_LEADERBOARD_URL);
+  }
+
+  function parseRemoteLeaderboardPayload(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (!payload || typeof payload !== "object") return [];
+    if (Array.isArray(payload.leaderboard)) return payload.leaderboard;
+    if (Array.isArray(payload.entries)) return payload.entries;
+    if (Array.isArray(payload.items)) return payload.items;
+    return [];
+  }
+
+  function loadRemoteLeaderboard() {
+    if (!isRemoteLeaderboardEnabled()) return Promise.resolve([]);
+    return fetch(REMOTE_LEADERBOARD_URL, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    })
+      .then(function (response) {
+        if (!response.ok) throw new Error("Remote leaderboard fetch failed");
+        return response.json();
+      })
+      .then(function (payload) {
+        return sanitizeLeaderboardEntries(parseRemoteLeaderboardPayload(payload));
+      })
+      .catch(function () {
+        return [];
+      });
+  }
+
+  function saveRemoteLeaderboard(entries) {
+    if (!isRemoteLeaderboardEnabled()) return Promise.resolve();
+    return fetch(REMOTE_LEADERBOARD_URL, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leaderboard: sanitizeLeaderboardEntries(entries) }),
+    }).then(function (response) {
+      if (!response.ok) throw new Error("Remote leaderboard write failed");
+    });
+  }
+
+  function syncLeaderboardFromRemote() {
+    if (!isRemoteLeaderboardEnabled() || remoteLeaderboardSyncBusy) return;
+    remoteLeaderboardSyncBusy = true;
+    loadRemoteLeaderboard()
+      .then(function (remoteEntries) {
+        if (!remoteEntries || remoteEntries.length === 0) return;
+        applyLeaderboard(mergeLeaderboards(leaderboard, remoteEntries));
+      })
+      .finally(function () {
+        remoteLeaderboardSyncBusy = false;
+      });
+  }
+
+  function syncLeaderboardToRemote() {
+    if (!isRemoteLeaderboardEnabled() || remoteLeaderboardSyncBusy) return;
+    remoteLeaderboardSyncBusy = true;
+    loadRemoteLeaderboard()
+      .then(function (remoteEntries) {
+        var mergedEntries = mergeLeaderboards(leaderboard, remoteEntries);
+        applyLeaderboard(mergedEntries);
+        return saveRemoteLeaderboard(mergedEntries);
+      })
+      .catch(function () {
+        // Remote sync is best-effort; keep local leaderboard working.
+      })
+      .finally(function () {
+        remoteLeaderboardSyncBusy = false;
+      });
   }
 
   function saveLeaderboard() {
@@ -525,6 +623,7 @@
     highScore = leaderboard.length > 0 ? leaderboard[0].score : 0;
     saveLeaderboard();
     renderLeaderboard();
+    syncLeaderboardToRemote();
   }
 
   function handleGameOver() {
@@ -1130,6 +1229,10 @@
   buildGrid();
   updateScoreDisplays(state.score, Math.max(highScore, state.score));
   render();
+  syncLeaderboardFromRemote();
+  if (isRemoteLeaderboardEnabled()) {
+    setInterval(syncLeaderboardFromRemote, 15000);
+  }
   syncBackgroundMusic();
   startAutoplayRetry();
 })();
