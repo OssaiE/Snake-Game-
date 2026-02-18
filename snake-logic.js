@@ -115,6 +115,7 @@
   }
 
   function getTargetFoodCount(snakeLength) {
+    // Longer snakes get extra simultaneous food targets (capped for board readability).
     var extraFoods = Math.floor(Math.max(0, snakeLength - BASE_SNAKE_LENGTH) / FOOD_LENGTH_STEP);
     return Math.min(MAX_FOOD_COUNT, 1 + extraFoods);
   }

@@ -397,10 +397,6 @@ button:active,
   }
 }
 
-.typing {
-  position: relative;
-}
-
 #high-score-name.name-pop {
   animation: input-pop 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }

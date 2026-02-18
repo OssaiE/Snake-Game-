@@ -56,8 +56,6 @@
   var highScoreTarget = 0;
   var scoreRafId = null;
   var highScoreRafId = null;
-  var typewriterTimers = new WeakMap();
-  var typedGameOverText = "";
   var MENU_MUSIC_VOLUME = 0.12;
   var GAME_MUSIC_VOLUME = 0.07;
   var POP_SFX_GAIN = 0.32;
@@ -137,6 +135,7 @@
       if (index === 0) markCell(segment.x, segment.y, "head");
     });
 
+    // Keep compatibility with older state snapshots that still use a single `food` field.
     var foods = Array.isArray(state.foods)
       ? state.foods
       : state.food
@@ -192,6 +191,7 @@
     var delta = to - from;
     function frame(now) {
       var progress = Math.min(1, (now - startTime) / durationMs);
+      // Cubic ease-out keeps score changes snappy without jumping.
       var eased = 1 - Math.pow(1 - progress, 3);
       var value = Math.round(from + delta * eased);
       onFrame(value);
@@ -250,33 +250,8 @@
     }
   }
 
-  function typeText(el, text, msPerChar) {
-    if (!el) return;
-    var existingTimer = typewriterTimers.get(el);
-    if (existingTimer) clearInterval(existingTimer);
-    el.textContent = "";
-    el.classList.add("typing");
-    var i = 0;
-    var timer = setInterval(function () {
-      i += 1;
-      el.textContent = text.slice(0, i);
-      if (i >= text.length) {
-        clearInterval(timer);
-        typewriterTimers.delete(el);
-        el.classList.remove("typing");
-      }
-    }, msPerChar);
-    typewriterTimers.set(el, timer);
-  }
-
   function setTextImmediate(el, text) {
     if (!el) return;
-    var existingTimer = typewriterTimers.get(el);
-    if (existingTimer) {
-      clearInterval(existingTimer);
-      typewriterTimers.delete(el);
-    }
-    el.classList.remove("typing");
     el.textContent = text;
   }
 
@@ -899,6 +874,7 @@
   }
 
   function setupButtonClickSfx() {
+    // Delegated handler covers both static and dynamically-created buttons.
     document.addEventListener("click", function (event) {
       var target = event.target;
       if (!target || typeof target.closest !== "function") return;
