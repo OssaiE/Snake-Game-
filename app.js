@@ -460,7 +460,7 @@
 
   function sanitizeLeaderboardEntries(entries) {
     if (!Array.isArray(entries)) return [];
-    return entries
+    var normalized = entries
       .filter(function (entry) {
         return entry && typeof entry.name === "string" && Number.isFinite(entry.score);
       })
@@ -471,7 +471,19 @@
           avatar: AVATARS.indexOf(entry.avatar) >= 0 ? entry.avatar : AVATARS[0],
           date: entry.date || new Date(0).toISOString(),
         };
-      })
+      });
+
+    // Deduplicate by player+avatar+score and keep the most recent attempt.
+    var byKey = new Map();
+    normalized.forEach(function (entry) {
+      var key = entry.name + "|" + entry.avatar + "|" + String(entry.score);
+      var previous = byKey.get(key);
+      if (!previous || previous.date < entry.date) {
+        byKey.set(key, entry);
+      }
+    });
+
+    return Array.from(byKey.values())
       .sort(function (a, b) {
         if (b.score !== a.score) return b.score - a.score;
         return a.date < b.date ? 1 : -1;

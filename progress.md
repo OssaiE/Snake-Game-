@@ -63,3 +63,4 @@ Original prompt: Build a classic Snake game in this repo.
 - Added optional Cancel action to high-score modal; users can skip saving a new high score.
 - Restyled high-score modal input and avatar picker to dark reference style with circular bordered avatar chips.
 - Rotated leaderboard storage key to `snake_leaderboard_v4` to reset leaderboard again.
+- Fixed global leaderboard duplicate rows by deduplicating merged entries in `sanitizeLeaderboardEntries` using `name+avatar+score` key and keeping the newest timestamp.
