@@ -4,22 +4,31 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type",
   "Content-Type": "application/json",
 };
+const MAX_STORED_SCORES = 500;
 
 function sanitize(entries) {
   if (!Array.isArray(entries)) return [];
-  return entries
+  const normalized = entries
     .filter((entry) => entry && typeof entry.name === "string" && Number.isFinite(entry.score))
     .map((entry) => ({
       name: String(entry.name).trim().slice(0, 16) || "Player",
       score: Number(entry.score),
       avatar: typeof entry.avatar === "string" ? entry.avatar : "🐍",
       date: typeof entry.date === "string" ? entry.date : new Date(0).toISOString(),
-    }))
+    }));
+
+  const unique = new Map();
+  normalized.forEach((entry) => {
+    const key = `${entry.name}|${entry.avatar}|${entry.score}|${entry.date}`;
+    if (!unique.has(key)) unique.set(key, entry);
+  });
+
+  return Array.from(unique.values())
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       return a.date < b.date ? 1 : -1;
     })
-    .slice(0, 10);
+    .slice(0, MAX_STORED_SCORES);
 }
 
 export default {
@@ -61,4 +70,3 @@ export default {
     });
   },
 };
-

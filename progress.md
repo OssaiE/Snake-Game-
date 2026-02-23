@@ -67,3 +67,8 @@ Original prompt: Build a classic Snake game in this repo.
 - Cleared global leaderboard store in Cloudflare KV by setting `scores` key to `[]`.
 - Added obstacle-hit feedback in `app.js`: plays a descending sad SFX and triggers orange pulse effect when snake consumes an obstacle.
 - Added orange pulse animation styles (`#game.obstacle-hit-pulse`) in `styles.css`.
+- Gameplay tuning: increased starting tick interval to 220ms for a slower initial game speed.
+- Input handling: keyboard shortcuts now ignore key events while typing in input/textarea/select/contenteditable fields (prevents pause/restart while entering leaderboard name).
+- Snake behavior: self-bite no longer ends game; snake now truncates to bite-point length.
+- Leaderboard persistence: store up to 500 entries (global/local), while rendering still shows top 10 highest scores.
+- Worker updated/redeployed (`Version ID: b7681627-224c-4b8b-8d48-b7e920575f0b`) to store up to 500 scores instead of truncating to top 10 server-side.

@@ -16,7 +16,7 @@
     </div>
     <div id="high-score-modal" class="dialog-modal hidden" aria-live="polite" aria-label="New high score">
       <div class="dialog-content">
-        <h2>New High Score</h2>
+        <h2 id="high-score-modal-title">Save Score</h2>
         <p id="high-score-modal-text">Enter your name</p>
         <label for="high-score-name">Name</label>
         <input id="high-score-name" type="text" maxlength="16" placeholder="Player" />
@@ -172,6 +172,7 @@
     </main>
 
     <audio id="bg-music" src="./assets/freepik-game-on.mp3" preload="auto" autoplay loop></audio>
+    <div id="confetti-layer" aria-hidden="true"></div>
     <script src="./snake-logic.js"></script>
     <script>
       window.SNAKE_SHARED_LEADERBOARD_URL =

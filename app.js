@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var BASE_TICK_MS = 170;
+  var BASE_TICK_MS = 220;
   var MIN_TICK_MS = 60;
   var GRID_SIZE = 22;
   var gameRoot = document.getElementById("game");
@@ -18,8 +18,10 @@
   var countdownLabelEl = document.getElementById("countdown-label");
   var countdownValueEl = document.getElementById("countdown-value");
   var highScoreModalEl = document.getElementById("high-score-modal");
+  var highScoreModalTitleEl = document.getElementById("high-score-modal-title");
   var highScoreModalTextEl = document.getElementById("high-score-modal-text");
   var highScoreNameInput = document.getElementById("high-score-name");
+  var confettiLayerEl = document.getElementById("confetti-layer");
   var avatarOptionsEl = document.getElementById("avatar-options");
   var cancelHighScoreBtn = document.getElementById("cancel-high-score-btn");
   var saveHighScoreBtn = document.getElementById("save-high-score-btn");
@@ -48,6 +50,7 @@
   var countdownSeconds = 0;
   var highScore = 0;
   var pendingHighScore = null;
+  var pendingIsNewHighScore = false;
   var hasActivatedMusic = true;
   var autoplayRetryId = null;
   var musicEnabled = true;
@@ -86,6 +89,7 @@
   ];
   var PLAYER_PROFILE_KEY = "snake_player_profile_v1";
   var LEADERBOARD_KEY = "snake_leaderboard_v4";
+  var MAX_LEADERBOARD_ENTRIES = 500;
   var MUSIC_ENABLED_KEY = "snake_music_enabled_v1";
   var REMOTE_LEADERBOARD_URL =
     typeof window.SNAKE_SHARED_LEADERBOARD_URL === "string"
@@ -480,10 +484,11 @@
         };
       });
 
-    // Deduplicate by player+avatar+score and keep the most recent attempt.
+    // Deduplicate exact same record that can appear after remote/local merge retries.
     var byKey = new Map();
     normalized.forEach(function (entry) {
-      var key = entry.name + "|" + entry.avatar + "|" + String(entry.score);
+      var key =
+        entry.name + "|" + entry.avatar + "|" + String(entry.score) + "|" + String(entry.date);
       var previous = byKey.get(key);
       if (!previous || previous.date < entry.date) {
         byKey.set(key, entry);
@@ -495,7 +500,7 @@
         if (b.score !== a.score) return b.score - a.score;
         return a.date < b.date ? 1 : -1;
       })
-      .slice(0, 10);
+      .slice(0, MAX_LEADERBOARD_ENTRIES);
   }
 
   function mergeLeaderboards(baseEntries, extraEntries) {
@@ -584,7 +589,10 @@
 
   function saveLeaderboard() {
     try {
-      window.localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard.slice(0, 10)));
+      window.localStorage.setItem(
+        LEADERBOARD_KEY,
+        JSON.stringify(leaderboard.slice(0, MAX_LEADERBOARD_ENTRIES))
+      );
     } catch (_err) {
       // Ignore storage failures.
     }
@@ -624,7 +632,7 @@
 
   function normalizePlayerName(value) {
     var cleaned = (value || "").trim().slice(0, 16);
-    return cleaned || "Player";
+    return cleaned || "Anonymous";
   }
 
   function upsertScore(name, score, avatar) {
@@ -638,11 +646,19 @@
       if (b.score !== a.score) return b.score - a.score;
       return a.date < b.date ? 1 : -1;
     });
-    leaderboard = leaderboard.slice(0, 10);
+    leaderboard = leaderboard.slice(0, MAX_LEADERBOARD_ENTRIES);
     highScore = leaderboard.length > 0 ? leaderboard[0].score : 0;
     saveLeaderboard();
     renderLeaderboard();
     syncLeaderboardToRemote();
+  }
+
+  function isTypingInInputField() {
+    var active = document.activeElement;
+    if (!active) return false;
+    var tag = (active.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return true;
+    return !!active.isContentEditable;
   }
 
   function handleGameOver() {
@@ -650,11 +666,17 @@
     hasRecordedScore = true;
     if (state.food === null) {
       gameOverCommentary = WIN_COMMENTARY[Math.floor(Math.random() * WIN_COMMENTARY.length)];
-    } else {
-      gameOverCommentary = LOSE_COMMENTARY[Math.floor(Math.random() * LOSE_COMMENTARY.length)];
+      return;
     }
-    if (state.score <= highScore) return;
-    openHighScoreModal(state.score);
+    gameOverCommentary = LOSE_COMMENTARY[Math.floor(Math.random() * LOSE_COMMENTARY.length)];
+    if (state.score <= 0) return;
+    var visibleTopTen = leaderboard.slice(0, 10);
+    if (visibleTopTen.length >= 10) {
+      var leastTopScore = visibleTopTen[visibleTopTen.length - 1].score;
+      if (state.score <= leastTopScore) return;
+    }
+    var isNewHighScore = state.score > highScore;
+    openHighScoreModal(state.score, isNewHighScore);
   }
 
   function renderCountdownModal() {
@@ -686,26 +708,56 @@
     });
   }
 
-  function openHighScoreModal(score) {
+  function openHighScoreModal(score, isNewHighScore) {
     pendingHighScore = score;
+    pendingIsNewHighScore = !!isNewHighScore;
     if (!highScoreModalEl) {
       upsertScore(playerProfile.name, score, playerProfile.avatar);
       if (highScoreEl) highScoreEl.textContent = String(highScore);
       pendingHighScore = null;
+      pendingIsNewHighScore = false;
       return;
     }
+    if (highScoreModalTitleEl) {
+      highScoreModalTitleEl.textContent = isNewHighScore ? "Save New High Score" : "Save Score";
+    }
+    if (saveHighScoreBtn) {
+      saveHighScoreBtn.textContent = isNewHighScore ? "Save New High Score" : "Save Score";
+    }
     if (highScoreModalTextEl) {
-      var modalText = "Score " + score + " beats the current high score.";
+      var modalText = "Score " + score + ". Save this run to the leaderboard?";
       setTextImmediate(highScoreModalTextEl, modalText);
     }
     if (highScoreNameInput) highScoreNameInput.value = playerProfile.name;
     setSelectedAvatar(playerProfile.avatar);
     highScoreModalEl.classList.remove("hidden");
     if (highScoreNameInput) highScoreNameInput.focus();
+    if (isNewHighScore) triggerConfettiBurst();
+  }
+
+  function triggerConfettiBurst() {
+    if (!confettiLayerEl) return;
+    confettiLayerEl.innerHTML = "";
+    var colors = ["#f44336", "#ef5350", "#ff7043", "#29b6f6", "#66bb6a", "#ffee58"];
+    var count = 120;
+    for (var i = 0; i < count; i += 1) {
+      var piece = document.createElement("span");
+      piece.className = "confetti-piece";
+      piece.style.left = Math.random() * 100 + "%";
+      piece.style.backgroundColor = colors[i % colors.length];
+      piece.style.animationDelay = Math.random() * 0.25 + "s";
+      piece.style.animationDuration = 1.6 + Math.random() * 1.4 + "s";
+      piece.style.transform = "rotate(" + Math.round(Math.random() * 360) + "deg)";
+      confettiLayerEl.appendChild(piece);
+    }
+    setTimeout(function () {
+      if (confettiLayerEl) confettiLayerEl.innerHTML = "";
+    }, 2600);
   }
 
   function closeHighScoreModal() {
     pendingHighScore = null;
+    pendingIsNewHighScore = false;
     if (!highScoreModalEl) return;
     highScoreModalEl.classList.add("hidden");
   }
@@ -719,6 +771,7 @@
     upsertScore(name, pendingHighScore, avatar);
     if (highScoreEl) highScoreEl.textContent = String(highScore);
     closeHighScoreModal();
+    restart();
   }
 
   function markUserInteraction() {
@@ -817,7 +870,7 @@
       cancelHighScoreBtn.addEventListener("click", function () {
         markUserInteraction();
         closeHighScoreModal();
-        render();
+        restart();
       });
     }
     if (highScoreNameInput) {
@@ -835,7 +888,7 @@
         if (event.key === "Escape") {
           event.preventDefault();
           closeHighScoreModal();
-          render();
+          restart();
         }
       });
     }
@@ -1183,6 +1236,7 @@
   }
 
   function handleKeydown(event) {
+    if (isTypingInInputField()) return;
     markUserInteraction();
     primeAudio();
     var key = event.key.toLowerCase();

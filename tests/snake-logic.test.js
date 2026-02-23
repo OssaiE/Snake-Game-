@@ -63,7 +63,9 @@ function testSelfCollision() {
     paused: false,
   };
   state = SnakeLogic.advance(state);
-  assert.strictEqual(state.gameOver, true, "moving into own body should end game");
+  assert.strictEqual(state.gameOver, false, "moving into own body should trim snake, not end game");
+  assert.strictEqual(state.snake.length, 4, "snake should shrink to the bite point length");
+  assert.deepStrictEqual(state.snake[0], { x: 1, y: 2 }, "head should move into bite position");
 }
 
 function testGrowthAndScore() {

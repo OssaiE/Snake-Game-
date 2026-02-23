@@ -276,8 +276,11 @@
     var eatingObstacle = obstacleIndex >= 0;
     var bodyToCheck = eatingFood ? snake : snake.slice(0, snake.length - 1);
     var bodySet = new Set(bodyToCheck.map(posKey));
+    var selfBiteIndex = -1;
     if (bodySet.has(posKey(nextHead))) {
-      return Object.assign({}, state, { direction: direction, gameOver: true });
+      selfBiteIndex = bodyToCheck.findIndex(function (segment) {
+        return segment.x === nextHead.x && segment.y === nextHead.y;
+      });
     }
 
     snake.unshift(nextHead);
@@ -293,6 +296,11 @@
     if (eatingObstacle) {
       obstacles.splice(obstacleIndex, 1);
       if (snake.length > 2) snake.pop();
+    }
+
+    if (selfBiteIndex >= 0) {
+      var keepLength = Math.max(2, selfBiteIndex + 1);
+      snake = snake.slice(0, keepLength);
     }
 
     var targetFoodCount = getTargetFoodCount(snake.length);
